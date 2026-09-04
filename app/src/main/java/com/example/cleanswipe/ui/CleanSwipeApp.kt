@@ -1,10 +1,9 @@
-package com.example.cleanswipe.ui
+﻿package com.example.cleanswipe.ui
 
 import android.Manifest
 import android.app.Activity
 import android.content.Context
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -15,41 +14,47 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.cleanswipe.data.datasource.MediaStoreDataSource
+import com.example.cleanswipe.data.preferences.SettingsManager
 import com.example.cleanswipe.data.repository.MediaRepository
 import com.example.cleanswipe.data.repository.MediaRepositoryImpl
+import com.example.cleanswipe.ui.components.FloatingBottomBar
+import com.example.cleanswipe.ui.components.MainTab
+import com.example.cleanswipe.ui.screens.folder.FolderScreen
+import com.example.cleanswipe.ui.screens.folder.FolderViewModel
 import com.example.cleanswipe.ui.screens.gallery.GalleryScreen
 import com.example.cleanswipe.ui.screens.gallery.GalleryViewModel
 import com.example.cleanswipe.ui.screens.permission.PermissionScreen
 import com.example.cleanswipe.ui.screens.review.SwipeReviewScreen
 import com.example.cleanswipe.ui.screens.review.SwipeReviewViewModel
-import com.example.cleanswipe.ui.screens.settings.RetentionSettingsSheet
+import com.example.cleanswipe.ui.screens.settings.SettingsScreen
 import com.example.cleanswipe.ui.screens.trash.TrashBinScreen
 import com.example.cleanswipe.ui.screens.trash.TrashBinViewModel
 import kotlinx.coroutines.launch
 
 enum class Screen {
     PERMISSION,
-    GALLERY,
+    MAIN,
     SWIPE_REVIEW,
-    TRASH_BIN
+    SETTINGS
 }
 
 @Composable
@@ -57,6 +62,9 @@ fun CleanSwipeApp() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Preferensi Pengaturan
+    val settingsManager = remember { SettingsManager.getInstance(context) }
 
     // Repository & Data Source
     val repository: MediaRepository = remember {
@@ -68,6 +76,9 @@ fun CleanSwipeApp() {
     val galleryViewModel: GalleryViewModel = viewModel(
         factory = GalleryViewModel.provideFactory(repository)
     )
+    val folderViewModel: FolderViewModel = viewModel(
+        factory = FolderViewModel.provideFactory(repository)
+    )
     val reviewViewModel: SwipeReviewViewModel = viewModel(
         factory = SwipeReviewViewModel.provideFactory(repository)
     )
@@ -75,16 +86,17 @@ fun CleanSwipeApp() {
         factory = TrashBinViewModel.provideFactory(repository)
     )
 
+    val trashState by trashViewModel.uiState.collectAsState()
+
     // Cek status izin media
     var currentScreen by remember {
         mutableStateOf(
-            if (hasMediaPermission(context)) Screen.GALLERY else Screen.PERMISSION
+            if (hasMediaPermission(context)) Screen.MAIN else Screen.PERMISSION
         )
     }
 
-    // Siklus retensi sampah (default 30 hari)
-    var retentionDays by remember { mutableIntStateOf(30) }
-    var showRetentionSheet by remember { mutableStateOf(false) }
+    // Tab Aktif di Main Screen (Gallery, Folders, Trash)
+    var currentTab by remember { mutableStateOf(MainTab.GALLERY) }
 
     // Action Callback saat Scoped Storage dialog selesai
     var onActionSuccessCallback by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -95,6 +107,7 @@ fun CleanSwipeApp() {
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             galleryViewModel.refresh()
+            folderViewModel.loadFolders()
             trashViewModel.loadTrashedMedia()
             onActionSuccessCallback?.invoke()
             onActionSuccessCallback = null
@@ -112,7 +125,7 @@ fun CleanSwipeApp() {
         AnimatedContent(
             targetState = currentScreen,
             transitionSpec = {
-                if (targetState == Screen.GALLERY) {
+                if (targetState == Screen.MAIN) {
                     fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(100))
                 } else {
                     (fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.98f, animationSpec = tween(180)))
@@ -128,36 +141,107 @@ fun CleanSwipeApp() {
                 Screen.PERMISSION -> {
                     PermissionScreen(
                         onPermissionGranted = {
-                            currentScreen = Screen.GALLERY
+                            currentScreen = Screen.MAIN
                             galleryViewModel.refresh()
+                            folderViewModel.loadFolders()
+                            trashViewModel.loadTrashedMedia()
                         }
                     )
                 }
 
-                Screen.GALLERY -> {
-                    GalleryScreen(
-                        viewModel = galleryViewModel,
-                        onStartSwipeReview = { initialIndex ->
-                            val currentList = galleryViewModel.uiState.value.allMedia
-                            if (currentList.isNotEmpty()) {
-                                reviewViewModel.initialize(currentList, initialIndex)
-                                currentScreen = Screen.SWIPE_REVIEW
-                            } else {
-                                Toast.makeText(context, "Tidak ada media untuk disortir", Toast.LENGTH_SHORT).show()
+                Screen.MAIN -> {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        // Konten Utama berdasarkan Tab yang dipilih
+                        when (currentTab) {
+                            MainTab.GALLERY -> {
+                                GalleryScreen(
+                                    viewModel = galleryViewModel,
+                                    onStartSwipeReview = { initialIndex ->
+                                        val currentList = galleryViewModel.uiState.value.allMedia
+                                        if (currentList.isNotEmpty()) {
+                                            reviewViewModel.initialize(currentList, initialIndex)
+                                            currentScreen = Screen.SWIPE_REVIEW
+                                        } else {
+                                            Toast.makeText(context, "Tidak ada media untuk disortir", Toast.LENGTH_SHORT).show()
+                                        }
+                                    },
+                                    onNavigateToSettings = {
+                                        currentScreen = Screen.SETTINGS
+                                    }
+                                )
                             }
-                        },
-                        onNavigateToTrashBin = {
-                            trashViewModel.loadTrashedMedia()
-                            currentScreen = Screen.TRASH_BIN
+
+                            MainTab.FOLDERS -> {
+                                FolderScreen(
+                                    viewModel = folderViewModel,
+                                    onAlbumClick = { album ->
+                                        if (album.mediaItems.isNotEmpty()) {
+                                            reviewViewModel.initialize(album.mediaItems, 0)
+                                            currentScreen = Screen.SWIPE_REVIEW
+                                        } else {
+                                            Toast.makeText(context, "Album \"${album.name}\" kosong", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                )
+                            }
+
+                            MainTab.TRASH -> {
+                                TrashBinScreen(
+                                    viewModel = trashViewModel,
+                                    onNavigateBack = {
+                                        currentTab = MainTab.GALLERY
+                                    },
+                                    onRestoreMedia = { uris ->
+                                        val request = trashViewModel.createRestoreRequest(uris)
+                                        if (request != null) {
+                                            onActionSuccessCallback = {
+                                                coroutineScope.launch {
+                                                    snackbarHostState.showSnackbar("${uris.size} media berhasil dipulihkan ke Galeri")
+                                                }
+                                            }
+                                            intentSenderLauncher.launch(request)
+                                        }
+                                    },
+                                    onPermanentDeleteMedia = { uris ->
+                                        val request = trashViewModel.createEmptyTrashRequest(uris)
+                                        if (request != null) {
+                                            onActionSuccessCallback = {
+                                                coroutineScope.launch {
+                                                    snackbarHostState.showSnackbar("${uris.size} media dihapus permanen")
+                                                }
+                                            }
+                                            intentSenderLauncher.launch(request)
+                                        }
+                                    },
+                                    onOpenRetentionSettings = {
+                                        currentScreen = Screen.SETTINGS
+                                    }
+                                )
+                            }
                         }
-                    )
+
+                        // Floating Bottom Bar mengambang di atas konten tab
+                        FloatingBottomBar(
+                            currentTab = currentTab,
+                            onTabSelected = { tab ->
+                                currentTab = tab
+                                if (tab == MainTab.FOLDERS) {
+                                    folderViewModel.loadFolders()
+                                } else if (tab == MainTab.TRASH) {
+                                    trashViewModel.loadTrashedMedia()
+                                }
+                            },
+                            trashedCount = trashState.trashedMedia.size,
+                            modifier = Modifier.align(Alignment.BottomCenter)
+                        )
+                    }
                 }
 
                 Screen.SWIPE_REVIEW -> {
                     SwipeReviewScreen(
                         viewModel = reviewViewModel,
                         onNavigateBack = {
-                            currentScreen = Screen.GALLERY
+                            currentScreen = Screen.MAIN
                         },
                         onExecuteTrash = { uris, onSuccess ->
                             val request = repository.createTrashRequest(uris, isTrash = true)
@@ -175,55 +259,16 @@ fun CleanSwipeApp() {
                     )
                 }
 
-                Screen.TRASH_BIN -> {
-                    TrashBinScreen(
-                        viewModel = trashViewModel,
+                Screen.SETTINGS -> {
+                    SettingsScreen(
+                        settingsManager = settingsManager,
                         onNavigateBack = {
-                            currentScreen = Screen.GALLERY
-                        },
-                        onRestoreMedia = { uris ->
-                            val request = trashViewModel.createRestoreRequest(uris)
-                            if (request != null) {
-                                onActionSuccessCallback = {
-                                    coroutineScope.launch {
-                                        snackbarHostState.showSnackbar("${uris.size} media berhasil dipulihkan ke Galeri")
-                                    }
-                                }
-                                intentSenderLauncher.launch(request)
-                            }
-                        },
-                        onPermanentDeleteMedia = { uris ->
-                            val request = trashViewModel.createEmptyTrashRequest(uris)
-                            if (request != null) {
-                                onActionSuccessCallback = {
-                                    coroutineScope.launch {
-                                        snackbarHostState.showSnackbar("${uris.size} media dihapus permanen")
-                                    }
-                                }
-                                intentSenderLauncher.launch(request)
-                            }
-                        },
-                        onOpenRetentionSettings = {
-                            showRetentionSheet = true
+                            currentScreen = Screen.MAIN
                         }
                     )
                 }
             }
         }
-    }
-
-    // Modal Bottom Sheet untuk Pengaturan Retensi Sampah
-    if (showRetentionSheet) {
-        RetentionSettingsSheet(
-            currentDays = retentionDays,
-            onSaveRetentionDays = { newDays ->
-                retentionDays = newDays
-                coroutineScope.launch {
-                    snackbarHostState.showSnackbar("Siklus retensi diperbarui ke $newDays hari")
-                }
-            },
-            onDismiss = { showRetentionSheet = false }
-        )
     }
 }
 

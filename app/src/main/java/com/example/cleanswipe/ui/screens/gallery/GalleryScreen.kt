@@ -29,6 +29,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -65,7 +66,7 @@ import com.example.cleanswipe.util.Formatters
 fun GalleryScreen(
     viewModel: GalleryViewModel,
     onStartSwipeReview: (initialIndex: Int) -> Unit,
-    onNavigateToTrashBin: () -> Unit,
+    onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -114,24 +115,11 @@ fun GalleryScreen(
                         )
                     }
 
-                    IconButton(onClick = onNavigateToTrashBin) {
-                        BadgedBox(
-                            badge = {
-                                if (state.trashedCount > 0) {
-                                    Badge(
-                                        containerColor = MaterialTheme.colorScheme.error,
-                                        contentColor = MaterialTheme.colorScheme.onError
-                                    ) {
-                                        Text(text = "${state.trashedCount}")
-                                    }
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Rounded.Delete,
-                                contentDescription = "Folder Sampah"
-                            )
-                        }
+                    IconButton(onClick = onNavigateToSettings) {
+                        Icon(
+                            imageVector = Icons.Rounded.Settings,
+                            contentDescription = "Pengaturan"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -228,7 +216,7 @@ fun GalleryScreen(
                         contentPadding = PaddingValues(
                             start = if (isCompact) 6.dp else 10.dp,
                             end = if (isCompact) 6.dp else 10.dp,
-                            bottom = 24.dp
+                            bottom = 110.dp
                         ),
                         horizontalArrangement = Arrangement.spacedBy(if (isCompact) 3.dp else 5.dp),
                         verticalArrangement = Arrangement.spacedBy(if (isCompact) 3.dp else 5.dp),

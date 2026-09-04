@@ -127,7 +127,7 @@ fun TrashBinScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 84.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -261,7 +261,12 @@ fun TrashBinScreen(
                 // Grid Media Sampah
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
-                    contentPadding = PaddingValues(12.dp),
+                    contentPadding = PaddingValues(
+                        start = 12.dp,
+                        end = 12.dp,
+                        top = 12.dp,
+                        bottom = 180.dp
+                    ),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     modifier = Modifier.fillMaxSize()

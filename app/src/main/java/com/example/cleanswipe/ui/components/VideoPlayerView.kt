@@ -15,8 +15,10 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeMute
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +36,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
+import com.example.cleanswipe.data.preferences.SettingsManager
 
 @OptIn(UnstableApi::class)
 @Composable
@@ -43,7 +46,11 @@ fun VideoPlayerView(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    var isMuted by remember { mutableStateOf(true) }
+    val settingsManager = remember { SettingsManager.getInstance(context) }
+    val settings by settingsManager.settings.collectAsState()
+
+    var isMuted by remember(settings.isAutoMuteEnabled) { mutableStateOf(settings.isAutoMuteEnabled) }
+    var isPlaying by remember { mutableStateOf(false) }
 
     // Batasi buffer duration agar hemat memori heap (hanya buffer 1-2.5 detik, bukan default 50 detik)
     val exoPlayer = remember(videoUri) {
@@ -63,14 +70,27 @@ fun VideoPlayerView(
                 val mediaItem = ExoMediaItem.fromUri(videoUri)
                 setMediaItem(mediaItem)
                 repeatMode = Player.REPEAT_MODE_ALL
-                volume = 0f // PRD P1: Mute secara default
+                volume = if (settings.isAutoMuteEnabled) 0f else 1f
                 prepare()
             }
     }
 
-    // Kelola play/pause bergantung pada apakah kartu berada di urutan teratas
-    DisposableEffect(isTopCard) {
-        if (isTopCard) {
+    // Dengarkan status pemutaran video
+    DisposableEffect(exoPlayer) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(playing: Boolean) {
+                isPlaying = playing
+            }
+        }
+        exoPlayer.addListener(listener)
+        onDispose {
+            exoPlayer.removeListener(listener)
+        }
+    }
+
+    // Kelola play/pause bergantung pada apakah kartu berada di urutan teratas & pengaturan auto play
+    DisposableEffect(isTopCard, settings.isAutoPlayEnabled) {
+        if (isTopCard && settings.isAutoPlayEnabled) {
             exoPlayer.play()
         } else {
             exoPlayer.pause()
@@ -131,6 +151,25 @@ fun VideoPlayerView(
                 tint = Color.White,
                 modifier = Modifier.size(22.dp)
             )
+        }
+
+        // Tombol Putar Manual di Tengah jika video sedang pause
+        if (!isPlaying && isTopCard) {
+            IconButton(
+                onClick = { exoPlayer.play() },
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .size(64.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = "Putar Video",
+                    tint = Color.White,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
         }
     }
 }
