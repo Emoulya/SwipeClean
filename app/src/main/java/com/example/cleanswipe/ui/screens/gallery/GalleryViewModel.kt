@@ -35,9 +35,11 @@ class GalleryViewModel(
         loadMedia()
     }
 
-    fun loadMedia() {
+    fun loadMedia(showLoading: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            if (showLoading || _uiState.value.allMedia.isEmpty()) {
+                _uiState.update { it.copy(isLoading = true) }
+            }
             try {
                 val media = repository.getActiveMedia(_uiState.value.selectedFilter)
                 val trashed = repository.getTrashedMedia()
@@ -67,11 +69,11 @@ class GalleryViewModel(
     fun setFilter(filter: MediaFilter) {
         if (_uiState.value.selectedFilter == filter) return
         _uiState.update { it.copy(selectedFilter = filter) }
-        loadMedia()
+        loadMedia(showLoading = true)
     }
 
-    fun refresh() {
-        loadMedia()
+    fun refresh(showLoading: Boolean = false) {
+        loadMedia(showLoading = showLoading)
     }
 
     companion object {

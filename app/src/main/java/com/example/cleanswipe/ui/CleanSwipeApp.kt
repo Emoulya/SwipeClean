@@ -10,8 +10,10 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -109,7 +111,14 @@ fun CleanSwipeApp() {
     ) { innerPadding ->
         AnimatedContent(
             targetState = currentScreen,
-            transitionSpec = { fadeIn() togetherWith fadeOut() },
+            transitionSpec = {
+                if (targetState == Screen.GALLERY) {
+                    fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(100))
+                } else {
+                    (fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.98f, animationSpec = tween(180)))
+                        .togetherWith(fadeOut(animationSpec = tween(120)))
+                }
+            },
             label = "ScreenTransition",
             modifier = Modifier
                 .fillMaxSize()
@@ -149,7 +158,6 @@ fun CleanSwipeApp() {
                         viewModel = reviewViewModel,
                         onNavigateBack = {
                             currentScreen = Screen.GALLERY
-                            galleryViewModel.refresh()
                         },
                         onExecuteTrash = { uris ->
                             val request = repository.createTrashRequest(uris, isTrash = true)
@@ -171,7 +179,6 @@ fun CleanSwipeApp() {
                         viewModel = trashViewModel,
                         onNavigateBack = {
                             currentScreen = Screen.GALLERY
-                            galleryViewModel.refresh()
                         },
                         onRestoreMedia = { uris ->
                             val request = trashViewModel.createRestoreRequest(uris)

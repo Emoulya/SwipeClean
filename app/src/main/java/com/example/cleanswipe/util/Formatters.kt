@@ -28,6 +28,8 @@ object Formatters {
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
 
+    private val monthYearFormat = SimpleDateFormat("MMMM yyyy", Locale.forLanguageTag("id-ID"))
+
     fun formatDateHeader(dateModifiedSeconds: Long): String {
         val itemTimeMillis = dateModifiedSeconds * 1000L
         val itemCal = Calendar.getInstance().apply { timeInMillis = itemTimeMillis }
@@ -43,21 +45,41 @@ object Formatters {
         return when {
             isSameDay -> "Hari Ini"
             isYesterday -> "Kemarin"
-            isSameYear -> {
-                val sdf = SimpleDateFormat("MMMM yyyy", Locale.forLanguageTag("id-ID"))
-                sdf.format(Date(itemTimeMillis))
-            }
-            else -> {
-                val sdf = SimpleDateFormat("MMMM yyyy", Locale.forLanguageTag("id-ID"))
-                sdf.format(Date(itemTimeMillis))
-            }
+            else -> monthYearFormat.format(Date(itemTimeMillis))
         }
     }
 
     fun groupMediaByDate(items: List<MediaItem>): Map<String, List<MediaItem>> {
         val groups = LinkedHashMap<String, MutableList<MediaItem>>()
+        if (items.isEmpty()) return groups
+
+        val now = Calendar.getInstance()
+        val todayYear = now.get(Calendar.YEAR)
+        val todayDay = now.get(Calendar.DAY_OF_YEAR)
+
+        val yesterday = (now.clone() as Calendar).apply { add(Calendar.DAY_OF_YEAR, -1) }
+        val yesterdayYear = yesterday.get(Calendar.YEAR)
+        val yesterdayDay = yesterday.get(Calendar.DAY_OF_YEAR)
+
+        val itemCal = Calendar.getInstance()
+        val monthCache = HashMap<Long, String>()
+
         for (item in items) {
-            val header = formatDateHeader(item.dateModified)
+            val timeMillis = item.dateModified * 1000L
+            itemCal.timeInMillis = timeMillis
+            val itemYear = itemCal.get(Calendar.YEAR)
+            val itemDay = itemCal.get(Calendar.DAY_OF_YEAR)
+
+            val header = when {
+                itemYear == todayYear && itemDay == todayDay -> "Hari Ini"
+                itemYear == yesterdayYear && itemDay == yesterdayDay -> "Kemarin"
+                else -> {
+                    val monthKey = itemYear * 100L + itemCal.get(Calendar.MONTH)
+                    monthCache.getOrPut(monthKey) {
+                        monthYearFormat.format(Date(timeMillis))
+                    }
+                }
+            }
             val list = groups.getOrPut(header) { mutableListOf() }
             list.add(item)
         }

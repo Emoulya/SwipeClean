@@ -203,7 +203,10 @@ fun GalleryScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         state.groupedMedia.forEach { (dateHeader, itemsInGroup) ->
-                            item(span = { GridItemSpan(3) }) {
+                            item(
+                                key = "header_$dateHeader",
+                                span = { GridItemSpan(3) }
+                            ) {
                                 Text(
                                     text = dateHeader,
                                     style = MaterialTheme.typography.titleSmall,
@@ -214,10 +217,10 @@ fun GalleryScreen(
                             }
 
                             items(itemsInGroup, key = { it.id }) { item ->
-                                val itemIndex = state.allMedia.indexOfFirst { it.id == item.id }
                                 MediaGridItem(
                                     item = item,
                                     onClick = {
+                                        val itemIndex = state.allMedia.indexOfFirst { it.id == item.id }
                                         onStartSwipeReview(if (itemIndex >= 0) itemIndex else 0)
                                     }
                                 )
