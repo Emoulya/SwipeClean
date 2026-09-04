@@ -56,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.request.videoFrameMillis
 import com.example.cleanswipe.data.model.MediaItem
 import com.example.cleanswipe.util.Formatters
 
@@ -279,6 +280,11 @@ fun TrashBinScreen(
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
                                         .data(item.uri)
+                                        .apply {
+                                            if (item.isVideo) {
+                                                videoFrameMillis(500)
+                                            }
+                                        }
                                         .crossfade(true)
                                         .build(),
                                     contentDescription = item.displayName,
