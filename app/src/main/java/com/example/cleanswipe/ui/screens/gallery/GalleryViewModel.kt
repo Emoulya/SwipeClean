@@ -13,16 +13,29 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+enum class GalleryGridMode(val columns: Int, val label: String) {
+    DAILY(4, "Harian (4 Kolom)"),
+    MONTHLY(6, "Bulanan (6 Kolom)")
+}
+
 data class GalleryUiState(
     val isLoading: Boolean = true,
     val selectedFilter: MediaFilter = MediaFilter.ALL,
-    val groupedMedia: Map<String, List<MediaItem>> = emptyMap(),
+    val gridMode: GalleryGridMode = GalleryGridMode.DAILY,
+    val dailyGroupedMedia: Map<String, List<MediaItem>> = emptyMap(),
+    val monthlyGroupedMedia: Map<String, List<MediaItem>> = emptyMap(),
     val allMedia: List<MediaItem> = emptyList(),
     val totalCount: Int = 0,
     val totalSizeBytes: Long = 0L,
     val trashedCount: Int = 0,
     val trashedSizeBytes: Long = 0L
-)
+) {
+    val currentGroupedMedia: Map<String, List<MediaItem>>
+        get() = if (gridMode == GalleryGridMode.DAILY) dailyGroupedMedia else monthlyGroupedMedia
+
+    val groupedMedia: Map<String, List<MediaItem>>
+        get() = currentGroupedMedia
+}
 
 class GalleryViewModel(
     private val repository: MediaRepository
@@ -44,7 +57,8 @@ class GalleryViewModel(
                 val media = repository.getActiveMedia(_uiState.value.selectedFilter)
                 val trashed = repository.getTrashedMedia()
 
-                val grouped = Formatters.groupMediaByDate(media)
+                val dailyGrouped = Formatters.groupMediaDaily(media)
+                val monthlyGrouped = Formatters.groupMediaMonthly(media)
                 val totalSize = media.sumOf { it.size }
                 val trashedSize = trashed.sumOf { it.size }
 
@@ -52,7 +66,8 @@ class GalleryViewModel(
                     it.copy(
                         isLoading = false,
                         allMedia = media,
-                        groupedMedia = grouped,
+                        dailyGroupedMedia = dailyGrouped,
+                        monthlyGroupedMedia = monthlyGrouped,
                         totalCount = media.size,
                         totalSizeBytes = totalSize,
                         trashedCount = trashed.size,
@@ -64,6 +79,20 @@ class GalleryViewModel(
                 _uiState.update { it.copy(isLoading = false) }
             }
         }
+    }
+
+    fun setGridMode(mode: GalleryGridMode) {
+        if (_uiState.value.gridMode == mode) return
+        _uiState.update { it.copy(gridMode = mode) }
+    }
+
+    fun toggleGridMode() {
+        val nextMode = if (_uiState.value.gridMode == GalleryGridMode.DAILY) {
+            GalleryGridMode.MONTHLY
+        } else {
+            GalleryGridMode.DAILY
+        }
+        _uiState.update { it.copy(gridMode = nextMode) }
     }
 
     fun setFilter(filter: MediaFilter) {

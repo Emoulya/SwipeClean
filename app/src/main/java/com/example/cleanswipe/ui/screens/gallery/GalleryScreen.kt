@@ -19,11 +19,17 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.PointerEventPass
+import kotlin.math.hypot
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AutoAwesomeMotion
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.GridView
 import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.ViewModule
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -44,6 +50,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.cleanswipe.data.model.MediaItem
@@ -60,6 +69,9 @@ fun GalleryScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
+    val haptic = LocalHapticFeedback.current
+    val isCompact = state.gridMode == GalleryGridMode.MONTHLY
+    val columnCount = state.gridMode.columns
 
     Scaffold(
         topBar = {
@@ -79,6 +91,22 @@ fun GalleryScreen(
                     }
                 },
                 actions = {
+                    // Tombol Toggle Cepat 4 Kolom (Harian) / 6 Kolom (Bulanan)
+                    IconButton(onClick = { viewModel.toggleGridMode() }) {
+                        Icon(
+                            imageVector = if (state.gridMode == GalleryGridMode.DAILY) {
+                                Icons.Rounded.GridView
+                            } else {
+                                Icons.Rounded.ViewModule
+                            },
+                            contentDescription = if (state.gridMode == GalleryGridMode.DAILY) {
+                                "Ubah ke 6 Kolom (Bulanan)"
+                            } else {
+                                "Ubah ke 4 Kolom (Harian)"
+                            }
+                        )
+                    }
+
                     IconButton(onClick = { viewModel.refresh() }) {
                         Icon(
                             imageVector = Icons.Rounded.Refresh,
@@ -179,7 +207,7 @@ fun GalleryScreen(
                 onFilterSelected = { viewModel.setFilter(it) }
             )
 
-            // Content Body
+            // Content Body dengan Gestur Pinch dan Spread
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -196,29 +224,87 @@ fun GalleryScreen(
                     )
                 } else {
                     LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxSize()
+                        columns = GridCells.Fixed(columnCount),
+                        contentPadding = PaddingValues(
+                            start = if (isCompact) 6.dp else 10.dp,
+                            end = if (isCompact) 6.dp else 10.dp,
+                            bottom = 24.dp
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(if (isCompact) 3.dp else 5.dp),
+                        verticalArrangement = Arrangement.spacedBy(if (isCompact) 3.dp else 5.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .pointerInput(Unit) {
+                                val thresholdPx = 28.dp.toPx()
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    var initialSpan: Float? = null
+                                    var hasSwitched = false
+
+                                    do {
+                                        val event = awaitPointerEvent(pass = PointerEventPass.Initial)
+                                        val activePointers = event.changes.filter { it.pressed }
+
+                                        if (activePointers.size >= 2) {
+                                            // Konsumsi event segera agar LazyVerticalGrid TIDAK melakukan scroll saat ada 2 jari!
+                                            event.changes.forEach { it.consume() }
+
+                                            if (!hasSwitched) {
+                                                val p1 = activePointers[0].position
+                                                val p2 = activePointers[1].position
+                                                val currentSpan = hypot(p1.x - p2.x, p1.y - p2.y)
+
+                                                if (initialSpan == null) {
+                                                    initialSpan = currentSpan
+                                                } else {
+                                                    val deltaSpan = currentSpan - initialSpan
+                                                    val currentMode = viewModel.uiState.value.gridMode
+
+                                                    // Spread (jari merenggang menjauh > thresholdPx): Beralih ke 6 Kolom (Bulanan)
+                                                    if (deltaSpan > thresholdPx && currentMode == GalleryGridMode.DAILY) {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        viewModel.setGridMode(GalleryGridMode.MONTHLY)
+                                                        hasSwitched = true
+                                                    }
+                                                    // Pinch (jari mencubit merapat < -thresholdPx): Beralih ke 4 Kolom (Harian)
+                                                    else if (deltaSpan < -thresholdPx && currentMode == GalleryGridMode.MONTHLY) {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        viewModel.setGridMode(GalleryGridMode.DAILY)
+                                                        hasSwitched = true
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            if (!hasSwitched) {
+                                                initialSpan = null
+                                            }
+                                        }
+                                    } while (event.changes.any { it.pressed })
+                                }
+                            }
                     ) {
-                        state.groupedMedia.forEach { (dateHeader, itemsInGroup) ->
+                        state.currentGroupedMedia.forEach { (dateHeader, itemsInGroup) ->
                             item(
-                                key = "header_$dateHeader",
-                                span = { GridItemSpan(3) }
+                                key = "header_${state.gridMode}_$dateHeader",
+                                span = { GridItemSpan(columnCount) }
                             ) {
                                 Text(
                                     text = dateHeader,
-                                    style = MaterialTheme.typography.titleSmall,
+                                    style = if (isCompact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(top = 14.dp, bottom = 6.dp, start = 4.dp)
+                                    modifier = Modifier.padding(
+                                        top = if (isCompact) 14.dp else 12.dp,
+                                        bottom = 6.dp,
+                                        start = 4.dp
+                                    )
                                 )
                             }
 
                             items(itemsInGroup, key = { it.id }) { item ->
                                 MediaGridItem(
                                     item = item,
+                                    isCompact = isCompact,
                                     onClick = {
                                         val itemIndex = state.allMedia.indexOfFirst { it.id == item.id }
                                         onStartSwipeReview(if (itemIndex >= 0) itemIndex else 0)

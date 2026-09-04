@@ -28,6 +28,7 @@ object Formatters {
         return String.format(Locale.getDefault(), "%02d:%02d", minutes, seconds)
     }
 
+    private val fullDateFormat = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("id-ID"))
     private val monthYearFormat = SimpleDateFormat("MMMM yyyy", Locale.forLanguageTag("id-ID"))
 
     fun formatDateHeader(dateModifiedSeconds: Long): String {
@@ -43,13 +44,20 @@ object Formatters {
                 yesterdayCal.get(Calendar.DAY_OF_YEAR) == itemCal.get(Calendar.DAY_OF_YEAR)
 
         return when {
-            isSameDay -> "Hari Ini"
-            isYesterday -> "Kemarin"
-            else -> monthYearFormat.format(Date(itemTimeMillis))
+            isSameDay -> "Hari ini | ${fullDateFormat.format(Date(itemTimeMillis))}"
+            isYesterday -> "Kemarin | ${fullDateFormat.format(Date(itemTimeMillis))}"
+            else -> fullDateFormat.format(Date(itemTimeMillis))
         }
     }
 
-    fun groupMediaByDate(items: List<MediaItem>): Map<String, List<MediaItem>> {
+    /**
+     * Pengelompokan Harian (4 Kolom)
+     * Format Label:
+     * - "Hari ini | 04 September 2026"
+     * - "Kemarin | 03 September 2026"
+     * - "dd MMMM yyyy" untuk hari-hari sebelumnya
+     */
+    fun groupMediaDaily(items: List<MediaItem>): Map<String, List<MediaItem>> {
         val groups = LinkedHashMap<String, MutableList<MediaItem>>()
         if (items.isEmpty()) return groups
 
@@ -62,7 +70,7 @@ object Formatters {
         val yesterdayDay = yesterday.get(Calendar.DAY_OF_YEAR)
 
         val itemCal = Calendar.getInstance()
-        val monthCache = HashMap<Long, String>()
+        val dayCache = HashMap<Long, String>()
 
         for (item in items) {
             val timeMillis = item.dateModified * 1000L
@@ -71,12 +79,16 @@ object Formatters {
             val itemDay = itemCal.get(Calendar.DAY_OF_YEAR)
 
             val header = when {
-                itemYear == todayYear && itemDay == todayDay -> "Hari Ini"
-                itemYear == yesterdayYear && itemDay == yesterdayDay -> "Kemarin"
+                itemYear == todayYear && itemDay == todayDay -> {
+                    "Hari ini | ${fullDateFormat.format(Date(timeMillis))}"
+                }
+                itemYear == yesterdayYear && itemDay == yesterdayDay -> {
+                    "Kemarin | ${fullDateFormat.format(Date(timeMillis))}"
+                }
                 else -> {
-                    val monthKey = itemYear * 100L + itemCal.get(Calendar.MONTH)
-                    monthCache.getOrPut(monthKey) {
-                        monthYearFormat.format(Date(timeMillis))
+                    val dayKey = itemYear * 1000L + itemDay
+                    dayCache.getOrPut(dayKey) {
+                        fullDateFormat.format(Date(timeMillis))
                     }
                 }
             }
@@ -85,4 +97,33 @@ object Formatters {
         }
         return groups
     }
+
+    /**
+     * Pengelompokan Bulanan (6 Kolom)
+     * Format Label: "September 2026", "Agustus 2026", dsb.
+     */
+    fun groupMediaMonthly(items: List<MediaItem>): Map<String, List<MediaItem>> {
+        val groups = LinkedHashMap<String, MutableList<MediaItem>>()
+        if (items.isEmpty()) return groups
+
+        val itemCal = Calendar.getInstance()
+        val monthCache = HashMap<Long, String>()
+
+        for (item in items) {
+            val timeMillis = item.dateModified * 1000L
+            itemCal.timeInMillis = timeMillis
+            val itemYear = itemCal.get(Calendar.YEAR)
+            val itemMonth = itemCal.get(Calendar.MONTH)
+
+            val monthKey = itemYear * 100L + itemMonth
+            val header = monthCache.getOrPut(monthKey) {
+                monthYearFormat.format(Date(timeMillis))
+            }
+            val list = groups.getOrPut(header) { mutableListOf() }
+            list.add(item)
+        }
+        return groups
+    }
+
+    fun groupMediaByDate(items: List<MediaItem>): Map<String, List<MediaItem>> = groupMediaDaily(items)
 }

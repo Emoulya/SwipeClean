@@ -33,16 +33,18 @@ import com.example.cleanswipe.util.Formatters
 fun MediaGridItem(
     item: MediaItem,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isCompact: Boolean = false
 ) {
     val context = LocalContext.current
+    val cornerRadius = if (isCompact) 6.dp else 10.dp
 
     Surface(
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(cornerRadius),
         tonalElevation = 1.dp,
         modifier = modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(cornerRadius))
             .clickable(onClick = onClick)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -67,10 +69,10 @@ fun MediaGridItem(
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
-                        .padding(6.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .padding(if (isCompact) 3.dp else 5.dp)
+                        .clip(RoundedCornerShape(4.dp))
                         .background(Color.Black.copy(alpha = 0.65f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                        .padding(horizontal = if (isCompact) 3.dp else 5.dp, vertical = 1.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -79,10 +81,10 @@ fun MediaGridItem(
                             imageVector = Icons.Rounded.PlayArrow,
                             contentDescription = "Video",
                             tint = Color.White,
-                            modifier = Modifier.size(12.dp)
+                            modifier = Modifier.size(if (isCompact) 10.dp else 12.dp)
                         )
                         val durationText = Formatters.formatDuration(item.durationMs)
-                        if (durationText.isNotEmpty()) {
+                        if (durationText.isNotEmpty() && !isCompact) {
                             Text(
                                 text = " $durationText",
                                 color = Color.White,
@@ -94,14 +96,14 @@ fun MediaGridItem(
             }
 
             // Large File badge (>20MB)
-            if (item.size >= 20 * 1024 * 1024L) {
+            if (item.size >= 20 * 1024 * 1024L && !isCompact) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(6.dp)
-                        .clip(RoundedCornerShape(6.dp))
+                        .padding(5.dp)
+                        .clip(RoundedCornerShape(4.dp))
                         .background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.85f))
-                        .padding(horizontal = 5.dp, vertical = 2.dp)
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
                 ) {
                     Text(
                         text = Formatters.formatFileSize(item.size),
