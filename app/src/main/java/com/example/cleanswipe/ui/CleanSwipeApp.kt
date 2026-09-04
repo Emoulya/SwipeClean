@@ -1,4 +1,4 @@
-﻿package com.example.cleanswipe.ui
+package com.example.cleanswipe.ui
 
 import android.Manifest
 import android.app.Activity
@@ -174,12 +174,12 @@ fun CleanSwipeApp() {
                             MainTab.FOLDERS -> {
                                 FolderScreen(
                                     viewModel = folderViewModel,
-                                    onAlbumClick = { album ->
-                                        if (album.mediaItems.isNotEmpty()) {
-                                            reviewViewModel.initialize(album.mediaItems, 0)
+                                    onStartSwipeReview = { mediaList, initialIndex ->
+                                        if (mediaList.isNotEmpty()) {
+                                            reviewViewModel.initialize(mediaList, initialIndex)
                                             currentScreen = Screen.SWIPE_REVIEW
                                         } else {
-                                            Toast.makeText(context, "Album \"${album.name}\" kosong", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "Tidak ada media untuk disortir", Toast.LENGTH_SHORT).show()
                                         }
                                     }
                                 )
@@ -224,6 +224,9 @@ fun CleanSwipeApp() {
                         FloatingBottomBar(
                             currentTab = currentTab,
                             onTabSelected = { tab ->
+                                if (tab == MainTab.FOLDERS && currentTab == MainTab.FOLDERS) {
+                                    folderViewModel.selectAlbum(null)
+                                }
                                 currentTab = tab
                                 if (tab == MainTab.FOLDERS) {
                                     folderViewModel.loadFolders()

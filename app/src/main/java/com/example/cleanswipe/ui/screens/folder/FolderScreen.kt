@@ -42,110 +42,146 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import com.example.cleanswipe.data.model.MediaAlbum
+import com.example.cleanswipe.data.model.MediaItem
 
 @Composable
 fun FolderScreen(
     viewModel: FolderViewModel,
-    onAlbumClick: (MediaAlbum) -> Unit,
+    onStartSwipeReview: (mediaList: List<MediaItem>, initialIndex: Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Color(0xFF0D0D0E))
-    ) {
-        if (state.isLoading) {
-            CircularProgressIndicator(
-                modifier = Modifier.align(Alignment.Center)
+    AnimatedContent(
+        targetState = state.selectedAlbum,
+        transitionSpec = {
+            if (targetState != null) {
+                (fadeIn(animationSpec = tween(200)) + scaleIn(initialScale = 0.97f, animationSpec = tween(200)))
+                    .togetherWith(fadeOut(animationSpec = tween(120)))
+            } else {
+                fadeIn(animationSpec = tween(200)) togetherWith
+                        (fadeOut(animationSpec = tween(120)) + scaleOut(targetScale = 0.97f, animationSpec = tween(120)))
+            }
+        },
+        label = "FolderNavigationTransition",
+        modifier = modifier.fillMaxSize()
+    ) { album ->
+        if (album != null) {
+            AlbumDetailScreen(
+                album = album,
+                gridMode = state.albumGridMode,
+                onToggleGridMode = { viewModel.toggleAlbumGridMode() },
+                onSetGridMode = { viewModel.setAlbumGridMode(it) },
+                onNavigateBack = { viewModel.selectAlbum(null) },
+                onStartSwipeReview = { initialIndex ->
+                    onStartSwipeReview(album.mediaItems, initialIndex)
+                }
             )
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = 16.dp,
-                    bottom = 110.dp // Ruang ekstra agar tidak tertutup floating bottom bar
-                ),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxSize()
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0xFF0D0D0E))
             ) {
-                // Section: Pinned Title
-                item(span = { GridItemSpan(3) }) {
-                    Text(
-                        text = "Pinned",
-                        color = Color.White,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                if (state.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center)
                     )
-                }
-
-                // Section: Pinned 2x2 Grid Items
-                item(span = { GridItemSpan(3) }) {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                } else {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 16.dp,
+                            bottom = 110.dp // Ruang ekstra agar tidak tertutup floating bottom bar
+                        ),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        val pinned = state.pinnedAlbums
-                        if (pinned.size >= 4) {
-                            // Baris 1: All photos & Camera
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        // Section: Pinned Title
+                        item(span = { GridItemSpan(3) }) {
+                            Text(
+                                text = "Pinned",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                            )
+                        }
+
+                        // Section: Pinned 2x2 Grid Items
+                        item(span = { GridItemSpan(3) }) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                PinnedAlbumCard(
-                                    album = pinned[0],
-                                    onClick = { onAlbumClick(pinned[0]) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                PinnedAlbumCard(
-                                    album = pinned[1],
-                                    onClick = { onAlbumClick(pinned[1]) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                            // Baris 2: Screenshots & Videos
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                PinnedAlbumCard(
-                                    album = pinned[2],
-                                    onClick = { onAlbumClick(pinned[2]) },
-                                    modifier = Modifier.weight(1f)
-                                )
-                                PinnedAlbumCard(
-                                    album = pinned[3],
-                                    onClick = { onAlbumClick(pinned[3]) },
-                                    modifier = Modifier.weight(1f)
-                                )
+                                val pinned = state.pinnedAlbums
+                                if (pinned.size >= 4) {
+                                    // Baris 1: All photos & Camera
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        PinnedAlbumCard(
+                                            album = pinned[0],
+                                            onClick = { viewModel.selectAlbum(pinned[0]) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        PinnedAlbumCard(
+                                            album = pinned[1],
+                                            onClick = { viewModel.selectAlbum(pinned[1]) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    // Baris 2: Screenshots & Videos
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        PinnedAlbumCard(
+                                            album = pinned[2],
+                                            onClick = { viewModel.selectAlbum(pinned[2]) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        PinnedAlbumCard(
+                                            album = pinned[3],
+                                            onClick = { viewModel.selectAlbum(pinned[3]) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
                             }
                         }
+
+                        // Section: Albums Title
+                        item(span = { GridItemSpan(3) }) {
+                            Text(
+                                text = "Albums",
+                                color = Color.White,
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 20.dp, bottom = 4.dp)
+                            )
+                        }
+
+                        // Section: Albums 3-Column Grid
+                        items(state.regularAlbums, key = { it.id }) { regAlbum ->
+                            AlbumGridItem(
+                                album = regAlbum,
+                                onClick = { viewModel.selectAlbum(regAlbum) }
+                            )
+                        }
                     }
-                }
-
-                // Section: Albums Title
-                item(span = { GridItemSpan(3) }) {
-                    Text(
-                        text = "Albums",
-                        color = Color.White,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(top = 20.dp, bottom = 4.dp)
-                    )
-                }
-
-                // Section: Albums 3-Column Grid
-                items(state.regularAlbums, key = { it.id }) { album ->
-                    AlbumGridItem(
-                        album = album,
-                        onClick = { onAlbumClick(album) }
-                    )
                 }
             }
         }

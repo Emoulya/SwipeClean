@@ -223,7 +223,7 @@ fun GalleryScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .pointerInput(Unit) {
-                                val thresholdPx = 28.dp.toPx()
+                                val thresholdPx = 20.dp.toPx()
                                 awaitEachGesture {
                                     awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
                                     var initialSpan: Float? = null
@@ -248,23 +248,24 @@ fun GalleryScreen(
                                                     val deltaSpan = currentSpan - initialSpan
                                                     val currentMode = viewModel.uiState.value.gridMode
 
-                                                    // Spread (jari merenggang menjauh > thresholdPx): Beralih ke 6 Kolom (Bulanan)
-                                                    if (deltaSpan > thresholdPx && currentMode == GalleryGridMode.DAILY) {
-                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                        viewModel.setGridMode(GalleryGridMode.MONTHLY)
-                                                        hasSwitched = true
-                                                    }
-                                                    // Pinch (jari mencubit merapat < -thresholdPx): Beralih ke 4 Kolom (Harian)
-                                                    else if (deltaSpan < -thresholdPx && currentMode == GalleryGridMode.MONTHLY) {
+                                                    // Spread (jari merenggang menjauh / zoom in > thresholdPx): Beralih ke 4 Kolom (Harian)
+                                                    if (deltaSpan > thresholdPx && currentMode == GalleryGridMode.MONTHLY) {
                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                                         viewModel.setGridMode(GalleryGridMode.DAILY)
+                                                        hasSwitched = true
+                                                    }
+                                                    // Pinch (jari mencubit merapat / zoom out < -thresholdPx): Beralih ke 6 Kolom (Bulanan)
+                                                    else if (deltaSpan < -thresholdPx && currentMode == GalleryGridMode.DAILY) {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        viewModel.setGridMode(GalleryGridMode.MONTHLY)
                                                         hasSwitched = true
                                                     }
                                                 }
                                             }
                                         } else {
-                                            if (!hasSwitched) {
-                                                initialSpan = null
+                                            initialSpan = null
+                                            if (activePointers.isEmpty()) {
+                                                hasSwitched = false
                                             }
                                         }
                                     } while (event.changes.any { it.pressed })

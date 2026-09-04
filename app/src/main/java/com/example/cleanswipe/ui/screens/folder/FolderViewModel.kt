@@ -1,4 +1,4 @@
-﻿package com.example.cleanswipe.ui.screens.folder
+package com.example.cleanswipe.ui.screens.folder
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -7,6 +7,7 @@ import com.example.cleanswipe.data.model.MediaAlbum
 import com.example.cleanswipe.data.model.MediaFilter
 import com.example.cleanswipe.data.model.MediaItem
 import com.example.cleanswipe.data.repository.MediaRepository
+import com.example.cleanswipe.ui.screens.gallery.GalleryGridMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -17,7 +18,8 @@ data class FolderUiState(
     val isLoading: Boolean = true,
     val pinnedAlbums: List<MediaAlbum> = emptyList(),
     val regularAlbums: List<MediaAlbum> = emptyList(),
-    val selectedAlbum: MediaAlbum? = null
+    val selectedAlbum: MediaAlbum? = null,
+    val albumGridMode: GalleryGridMode = GalleryGridMode.DAILY
 )
 
 class FolderViewModel(
@@ -114,6 +116,20 @@ class FolderViewModel(
 
     fun selectAlbum(album: MediaAlbum?) {
         _uiState.update { it.copy(selectedAlbum = album) }
+    }
+
+    fun toggleAlbumGridMode() {
+        val nextMode = if (_uiState.value.albumGridMode == GalleryGridMode.DAILY) {
+            GalleryGridMode.MONTHLY
+        } else {
+            GalleryGridMode.DAILY
+        }
+        _uiState.update { it.copy(albumGridMode = nextMode) }
+    }
+
+    fun setAlbumGridMode(mode: GalleryGridMode) {
+        if (_uiState.value.albumGridMode == mode) return
+        _uiState.update { it.copy(albumGridMode = mode) }
     }
 
     companion object {
