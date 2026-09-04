@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import coil.request.videoFrameMillis
 import com.example.cleanswipe.data.model.MediaItem
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -294,16 +295,21 @@ private fun MediaCardContent(
             .clip(RoundedCornerShape(24.dp))
             .background(Color(0xFF18181B))
     ) {
-        if (media.isVideo) {
+        if (media.isVideo && isTopCard) {
             VideoPlayerView(
                 videoUri = media.uri,
-                isTopCard = isTopCard,
+                isTopCard = true,
                 modifier = Modifier.fillMaxSize()
             )
         } else {
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(media.uri)
+                    .apply {
+                        if (media.isVideo) {
+                            videoFrameMillis(500)
+                        }
+                    }
                     .crossfade(true)
                     .build(),
                 contentDescription = media.displayName,

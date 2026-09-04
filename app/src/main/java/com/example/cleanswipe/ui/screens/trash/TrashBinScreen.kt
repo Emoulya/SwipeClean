@@ -280,6 +280,7 @@ fun TrashBinScreen(
                                 AsyncImage(
                                     model = ImageRequest.Builder(context)
                                         .data(item.uri)
+                                        .size(256, 256)
                                         .apply {
                                             if (item.isVideo) {
                                                 videoFrameMillis(500)

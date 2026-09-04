@@ -31,6 +31,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem as ExoMediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 
@@ -44,14 +45,27 @@ fun VideoPlayerView(
     val context = LocalContext.current
     var isMuted by remember { mutableStateOf(true) }
 
+    // Batasi buffer duration agar hemat memori heap (hanya buffer 1-2.5 detik, bukan default 50 detik)
     val exoPlayer = remember(videoUri) {
-        ExoPlayer.Builder(context).build().apply {
-            val mediaItem = ExoMediaItem.fromUri(videoUri)
-            setMediaItem(mediaItem)
-            repeatMode = Player.REPEAT_MODE_ALL
-            volume = 0f // PRD P1: Mute secara default
-            prepare()
-        }
+        val loadControl = DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 1_000,
+                /* maxBufferMs = */ 2_500,
+                /* bufferForPlaybackMs = */ 500,
+                /* bufferForPlaybackAfterRebufferMs = */ 1_000
+            )
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .build()
+
+        ExoPlayer.Builder(context)
+            .setLoadControl(loadControl)
+            .build().apply {
+                val mediaItem = ExoMediaItem.fromUri(videoUri)
+                setMediaItem(mediaItem)
+                repeatMode = Player.REPEAT_MODE_ALL
+                volume = 0f // PRD P1: Mute secara default
+                prepare()
+            }
     }
 
     // Kelola play/pause bergantung pada apakah kartu berada di urutan teratas
@@ -69,6 +83,8 @@ fun VideoPlayerView(
     // Lepaskan player ketika komponen dihapus dari komposisi
     DisposableEffect(exoPlayer) {
         onDispose {
+            exoPlayer.stop()
+            exoPlayer.clearMediaItems()
             exoPlayer.release()
         }
     }
@@ -84,6 +100,14 @@ fun VideoPlayerView(
                         ViewGroup.LayoutParams.MATCH_PARENT
                     )
                 }
+            },
+            update = { playerView ->
+                if (playerView.player != exoPlayer) {
+                    playerView.player = exoPlayer
+                }
+            },
+            onRelease = { playerView ->
+                playerView.player = null
             },
             modifier = Modifier.fillMaxSize()
         )
