@@ -159,7 +159,7 @@ fun CleanSwipeApp() {
                         onNavigateBack = {
                             currentScreen = Screen.GALLERY
                         },
-                        onExecuteTrash = { uris ->
+                        onExecuteTrash = { uris, onSuccess ->
                             val request = repository.createTrashRequest(uris, isTrash = true)
                             if (request != null) {
                                 onActionSuccessCallback = {
@@ -167,6 +167,7 @@ fun CleanSwipeApp() {
                                     coroutineScope.launch {
                                         snackbarHostState.showSnackbar("${uris.size} media berhasil dipindahkan ke Sampah")
                                     }
+                                    onSuccess?.invoke()
                                 }
                                 intentSenderLauncher.launch(request)
                             }

@@ -58,17 +58,33 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.rounded.FlashOn
+import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SwipeReviewScreen(
     viewModel: SwipeReviewViewModel,
     onNavigateBack: () -> Unit,
-    onExecuteTrash: (uris: List<Uri>) -> Unit,
+    onExecuteTrash: (uris: List<Uri>, onSuccess: (() -> Unit)?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsState()
     var programmaticSwipeTrigger by remember { mutableStateOf<SwipeDirection?>(null) }
     var showInfoDialog by remember { mutableStateOf(false) }
+    var showExitDialog by remember { mutableStateOf(false) }
+
+    // Tangani tombol back perangkat / gesture back Android
+    BackHandler(enabled = true) {
+        if (state.pendingTrashList.isNotEmpty()) {
+            showExitDialog = true
+        } else {
+            onNavigateBack()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -89,7 +105,13 @@ fun SwipeReviewScreen(
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
+                    IconButton(onClick = {
+                        if (state.pendingTrashList.isNotEmpty()) {
+                            showExitDialog = true
+                        } else {
+                            onNavigateBack()
+                        }
+                    }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                             contentDescription = "Kembali"
@@ -97,6 +119,29 @@ fun SwipeReviewScreen(
                     }
                 },
                 actions = {
+                    // Toggle Mode Langsung vs Kolektif
+                    FilterChip(
+                        selected = state.isInstantTrashMode,
+                        onClick = { viewModel.toggleInstantTrashMode() },
+                        label = {
+                            Text(
+                                text = if (state.isInstantTrashMode) "Langsung" else "Kolektif",
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = if (state.isInstantTrashMode) Icons.Rounded.FlashOn else Icons.Rounded.Layers,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    )
+
                     IconButton(
                         onClick = { showInfoDialog = true },
                         enabled = state.currentMedia != null
@@ -124,7 +169,7 @@ fun SwipeReviewScreen(
                     Button(
                         onClick = {
                             val uris = state.pendingTrashList.map { it.uri }
-                            onExecuteTrash(uris)
+                            onExecuteTrash(uris, null)
                         },
                         modifier = Modifier
                             .fillMaxWidth()
@@ -225,7 +270,9 @@ fun SwipeReviewScreen(
                     trashSize = state.pendingTrashSizeBytes,
                     onApplyTrash = {
                         val uris = state.pendingTrashList.map { it.uri }
-                        onExecuteTrash(uris)
+                        onExecuteTrash(uris) {
+                            onNavigateBack()
+                        }
                     },
                     onBackToGallery = onNavigateBack,
                     modifier = Modifier.align(Alignment.Center)
@@ -235,7 +282,11 @@ fun SwipeReviewScreen(
                     currentMedia = state.currentMedia,
                     nextMedia = state.nextMedia,
                     onSwiped = { direction ->
+                        val itemSwiped = state.currentMedia
                         viewModel.handleSwipe(direction)
+                        if (direction == SwipeDirection.LEFT && state.isInstantTrashMode && itemSwiped != null) {
+                            onExecuteTrash(listOf(itemSwiped.uri), null)
+                        }
                     },
                     programmaticSwipeTrigger = programmaticSwipeTrigger,
                     onProgrammaticSwipeHandled = {
@@ -252,6 +303,66 @@ fun SwipeReviewScreen(
         MediaInfoDialog(
             media = state.currentMedia!!,
             onDismiss = { showInfoDialog = false }
+        )
+    }
+
+    // Dialog Konfirmasi Keluar saat Masih Ada Antrean Sampah
+    if (showExitDialog && state.pendingTrashList.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { showExitDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Pindahkan ke Sampah?",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = "Anda telah menandai ${state.pendingTrashList.size} media (${Formatters.formatFileSize(state.pendingTrashSizeBytes)}) untuk dihapus. Apakah Anda ingin memindahkannya ke folder Sampah sistem sekarang?"
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitDialog = false
+                        val uris = state.pendingTrashList.map { it.uri }
+                        onExecuteTrash(uris) {
+                            onNavigateBack()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Pindahkan Sekarang")
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(
+                        onClick = {
+                            showExitDialog = false
+                            viewModel.clearPendingTrashAfterExecution()
+                            onNavigateBack()
+                        }
+                    ) {
+                        Text("Buang Antrean")
+                    }
+                    TextButton(
+                        onClick = { showExitDialog = false }
+                    ) {
+                        Text("Batal")
+                    }
+                }
+            }
         )
     }
 }

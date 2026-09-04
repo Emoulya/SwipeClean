@@ -21,7 +21,8 @@ data class SwipeReviewUiState(
     val pendingTrashList: List<MediaItem> = emptyList(),
     val keepList: List<MediaItem> = emptyList(),
     val actionHistory: List<SwipeAction> = emptyList(),
-    val isBatchExecuting: Boolean = false
+    val isBatchExecuting: Boolean = false,
+    val isInstantTrashMode: Boolean = false
 ) {
     val currentMedia: MediaItem?
         get() = mediaList.getOrNull(currentIndex)
@@ -111,6 +112,12 @@ class SwipeReviewViewModel(
                 keepList = updatedKeep,
                 actionHistory = remainingHistory
             )
+        }
+    }
+
+    fun toggleInstantTrashMode() {
+        _uiState.update {
+            it.copy(isInstantTrashMode = !it.isInstantTrashMode)
         }
     }
 
