@@ -1,5 +1,9 @@
 package com.example.cleanswipe.ui.screens.gallery
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -282,11 +286,20 @@ fun GalleryScreen(
                                     style = if (isCompact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(
-                                        top = if (isCompact) 14.dp else 12.dp,
-                                        bottom = 6.dp,
-                                        start = 4.dp
-                                    )
+                                    modifier = Modifier
+                                        .animateItem(
+                                            fadeInSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                            fadeOutSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                            placementSpec = spring(
+                                                stiffness = Spring.StiffnessMediumLow,
+                                                dampingRatio = Spring.DampingRatioLowBouncy
+                                            )
+                                        )
+                                        .padding(
+                                            top = if (isCompact) 14.dp else 12.dp,
+                                            bottom = 6.dp,
+                                            start = 4.dp
+                                        )
                                 )
                             }
 
@@ -294,6 +307,14 @@ fun GalleryScreen(
                                 MediaGridItem(
                                     item = item,
                                     isCompact = isCompact,
+                                    modifier = Modifier.animateItem(
+                                        fadeInSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                        fadeOutSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                        placementSpec = spring(
+                                            stiffness = Spring.StiffnessMediumLow,
+                                            dampingRatio = Spring.DampingRatioLowBouncy
+                                        )
+                                    ),
                                     onClick = {
                                         val itemIndex = state.allMedia.indexOfFirst { it.id == item.id }
                                         onStartSwipeReview(if (itemIndex >= 0) itemIndex else 0)

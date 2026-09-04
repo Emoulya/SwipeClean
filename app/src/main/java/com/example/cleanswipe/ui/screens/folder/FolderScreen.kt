@@ -43,11 +43,14 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import com.example.cleanswipe.data.model.MediaAlbum
 import com.example.cleanswipe.data.model.MediaItem
@@ -64,11 +67,29 @@ fun FolderScreen(
         targetState = state.selectedAlbum,
         transitionSpec = {
             if (targetState != null) {
-                (fadeIn(animationSpec = tween(200)) + scaleIn(initialScale = 0.97f, animationSpec = tween(200)))
-                    .togetherWith(fadeOut(animationSpec = tween(120)))
+                // Membuka detail album: Slide in from right (direction left, ease out)
+                (slideInHorizontally(
+                    initialOffsetX = { fullWidth -> fullWidth },
+                    animationSpec = tween(durationMillis = 300, easing = EaseOut)
+                ) + fadeIn(animationSpec = tween(durationMillis = 250, easing = EaseOut)))
+                    .togetherWith(
+                        slideOutHorizontally(
+                            targetOffsetX = { fullWidth -> -fullWidth / 4 },
+                            animationSpec = tween(durationMillis = 300, easing = EaseOut)
+                        ) + fadeOut(animationSpec = tween(durationMillis = 200))
+                    )
             } else {
-                fadeIn(animationSpec = tween(200)) togetherWith
-                        (fadeOut(animationSpec = tween(120)) + scaleOut(targetScale = 0.97f, animationSpec = tween(120)))
+                // Kembali ke daftar folder: Slide out to right (direction right, ease out)
+                (slideInHorizontally(
+                    initialOffsetX = { fullWidth -> -fullWidth / 4 },
+                    animationSpec = tween(durationMillis = 300, easing = EaseOut)
+                ) + fadeIn(animationSpec = tween(durationMillis = 250, easing = EaseOut)))
+                    .togetherWith(
+                        slideOutHorizontally(
+                            targetOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(durationMillis = 300, easing = EaseOut)
+                        ) + fadeOut(animationSpec = tween(durationMillis = 250))
+                    )
             }
         },
         label = "FolderNavigationTransition",

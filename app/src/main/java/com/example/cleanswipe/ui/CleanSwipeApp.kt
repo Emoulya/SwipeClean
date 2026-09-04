@@ -9,18 +9,28 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.EaseIn
+import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -87,6 +97,7 @@ fun CleanSwipeApp() {
     )
 
     val trashState by trashViewModel.uiState.collectAsState()
+    val folderState by folderViewModel.uiState.collectAsState()
 
     // Cek status izin media
     var currentScreen by remember {
@@ -95,8 +106,20 @@ fun CleanSwipeApp() {
         )
     }
 
-    // Tab Aktif di Main Screen (Gallery, Folders, Trash)
-    var currentTab by remember { mutableStateOf(MainTab.GALLERY) }
+    // Pager State untuk Horizontal Slide antar Tab (Galeri, Folder, Sampah)
+    val pagerState = rememberPagerState(
+        initialPage = MainTab.GALLERY.ordinal,
+        pageCount = { MainTab.entries.size }
+    )
+
+    // Muat data saat tab bergeser
+    LaunchedEffect(pagerState.currentPage) {
+        when (MainTab.entries[pagerState.currentPage]) {
+            MainTab.GALLERY -> galleryViewModel.refresh()
+            MainTab.FOLDERS -> folderViewModel.loadFolders()
+            MainTab.TRASH -> trashViewModel.loadTrashedMedia()
+        }
+    }
 
     // Action Callback saat Scoped Storage dialog selesai
     var onActionSuccessCallback by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -125,11 +148,72 @@ fun CleanSwipeApp() {
         AnimatedContent(
             targetState = currentScreen,
             transitionSpec = {
-                if (targetState == Screen.MAIN) {
-                    fadeIn(animationSpec = tween(150)) togetherWith fadeOut(animationSpec = tween(100))
-                } else {
-                    (fadeIn(animationSpec = tween(180)) + scaleIn(initialScale = 0.98f, animationSpec = tween(180)))
-                        .togetherWith(fadeOut(animationSpec = tween(120)))
+                when {
+                    // 1. Ke Settings (Slide in direction left, ease in)
+                    initialState == Screen.MAIN && targetState == Screen.SETTINGS -> {
+                        (slideInHorizontally(
+                            initialOffsetX = { fullWidth -> fullWidth },
+                            animationSpec = tween(durationMillis = 300, easing = EaseIn)
+                        ) + fadeIn(animationSpec = tween(durationMillis = 300, easing = EaseIn)))
+                            .togetherWith(
+                                slideOutHorizontally(
+                                    targetOffsetX = { fullWidth -> -fullWidth / 3 },
+                                    animationSpec = tween(durationMillis = 300, easing = EaseIn)
+                                ) + fadeOut(animationSpec = tween(durationMillis = 200))
+                            )
+                    }
+
+                    // 2. Back dari Settings (Slide out direction right, ease out)
+                    initialState == Screen.SETTINGS && targetState == Screen.MAIN -> {
+                        (slideInHorizontally(
+                            initialOffsetX = { fullWidth -> -fullWidth / 3 },
+                            animationSpec = tween(durationMillis = 300, easing = EaseOut)
+                        ) + fadeIn(animationSpec = tween(durationMillis = 300, easing = EaseOut)))
+                            .togetherWith(
+                                slideOutHorizontally(
+                                    targetOffsetX = { fullWidth -> fullWidth },
+                                    animationSpec = tween(durationMillis = 300, easing = EaseOut)
+                                ) + fadeOut(animationSpec = tween(durationMillis = 250))
+                            )
+                    }
+
+                    // 3. Media di-klik -> Ke Swipe Review (Move in direction up, ease out)
+                    targetState == Screen.SWIPE_REVIEW -> {
+                        (slideInVertically(
+                            initialOffsetY = { fullHeight -> fullHeight },
+                            animationSpec = tween(durationMillis = 320, easing = EaseOut)
+                        ) + fadeIn(animationSpec = tween(durationMillis = 260, easing = EaseOut)))
+                            .togetherWith(
+                                scaleOut(
+                                    targetScale = 0.92f,
+                                    animationSpec = tween(durationMillis = 320, easing = EaseOut)
+                                ) + fadeOut(animationSpec = tween(durationMillis = 200))
+                            )
+                    }
+
+                    // 4. Back dari Swipe Review (Move out direction down, ease out)
+                    initialState == Screen.SWIPE_REVIEW && targetState == Screen.MAIN -> {
+                        (scaleIn(
+                            initialScale = 0.92f,
+                            animationSpec = tween(durationMillis = 300, easing = EaseOut)
+                        ) + fadeIn(animationSpec = tween(durationMillis = 300, easing = EaseOut)))
+                            .togetherWith(
+                                slideOutVertically(
+                                    targetOffsetY = { fullHeight -> fullHeight },
+                                    animationSpec = tween(durationMillis = 300, easing = EaseOut)
+                                ) + fadeOut(animationSpec = tween(durationMillis = 250))
+                            )
+                    }
+
+                    // Transisi default (Permission <-> Main dll)
+                    targetState == Screen.MAIN -> {
+                        fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(150))
+                    }
+
+                    else -> {
+                        (fadeIn(animationSpec = tween(200)) + scaleIn(initialScale = 0.98f, animationSpec = tween(200)))
+                            .togetherWith(fadeOut(animationSpec = tween(150)))
+                    }
                 }
             },
             label = "ScreenTransition",
@@ -151,87 +235,92 @@ fun CleanSwipeApp() {
 
                 Screen.MAIN -> {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Konten Utama berdasarkan Tab yang dipilih
-                        when (currentTab) {
-                            MainTab.GALLERY -> {
-                                GalleryScreen(
-                                    viewModel = galleryViewModel,
-                                    onStartSwipeReview = { initialIndex ->
-                                        val currentList = galleryViewModel.uiState.value.allMedia
-                                        if (currentList.isNotEmpty()) {
-                                            reviewViewModel.initialize(currentList, initialIndex)
-                                            currentScreen = Screen.SWIPE_REVIEW
-                                        } else {
-                                            Toast.makeText(context, "Tidak ada media untuk disortir", Toast.LENGTH_SHORT).show()
-                                        }
-                                    },
-                                    onNavigateToSettings = {
-                                        currentScreen = Screen.SETTINGS
-                                    }
-                                )
-                            }
-
-                            MainTab.FOLDERS -> {
-                                FolderScreen(
-                                    viewModel = folderViewModel,
-                                    onStartSwipeReview = { mediaList, initialIndex ->
-                                        if (mediaList.isNotEmpty()) {
-                                            reviewViewModel.initialize(mediaList, initialIndex)
-                                            currentScreen = Screen.SWIPE_REVIEW
-                                        } else {
-                                            Toast.makeText(context, "Tidak ada media untuk disortir", Toast.LENGTH_SHORT).show()
-                                        }
-                                    }
-                                )
-                            }
-
-                            MainTab.TRASH -> {
-                                TrashBinScreen(
-                                    viewModel = trashViewModel,
-                                    onNavigateBack = {
-                                        currentTab = MainTab.GALLERY
-                                    },
-                                    onRestoreMedia = { uris ->
-                                        val request = trashViewModel.createRestoreRequest(uris)
-                                        if (request != null) {
-                                            onActionSuccessCallback = {
-                                                coroutineScope.launch {
-                                                    snackbarHostState.showSnackbar("${uris.size} media berhasil dipulihkan ke Galeri")
-                                                }
+                        // HorizontalPager untuk perpindahan antar tab via gestur slide / geser
+                        HorizontalPager(
+                            state = pagerState,
+                            userScrollEnabled = folderState.selectedAlbum == null,
+                            modifier = Modifier.fillMaxSize()
+                        ) { page ->
+                            when (MainTab.entries[page]) {
+                                MainTab.GALLERY -> {
+                                    GalleryScreen(
+                                        viewModel = galleryViewModel,
+                                        onStartSwipeReview = { initialIndex ->
+                                            val currentList = galleryViewModel.uiState.value.allMedia
+                                            if (currentList.isNotEmpty()) {
+                                                reviewViewModel.initialize(currentList, initialIndex)
+                                                currentScreen = Screen.SWIPE_REVIEW
+                                            } else {
+                                                Toast.makeText(context, "Tidak ada media untuk disortir", Toast.LENGTH_SHORT).show()
                                             }
-                                            intentSenderLauncher.launch(request)
+                                        },
+                                        onNavigateToSettings = {
+                                            currentScreen = Screen.SETTINGS
                                         }
-                                    },
-                                    onPermanentDeleteMedia = { uris ->
-                                        val request = trashViewModel.createEmptyTrashRequest(uris)
-                                        if (request != null) {
-                                            onActionSuccessCallback = {
-                                                coroutineScope.launch {
-                                                    snackbarHostState.showSnackbar("${uris.size} media dihapus permanen")
-                                                }
+                                    )
+                                }
+
+                                MainTab.FOLDERS -> {
+                                    FolderScreen(
+                                        viewModel = folderViewModel,
+                                        onStartSwipeReview = { mediaList, initialIndex ->
+                                            if (mediaList.isNotEmpty()) {
+                                                reviewViewModel.initialize(mediaList, initialIndex)
+                                                currentScreen = Screen.SWIPE_REVIEW
+                                            } else {
+                                                Toast.makeText(context, "Tidak ada media untuk disortir", Toast.LENGTH_SHORT).show()
                                             }
-                                            intentSenderLauncher.launch(request)
                                         }
-                                    },
-                                    onOpenRetentionSettings = {
-                                        currentScreen = Screen.SETTINGS
-                                    }
-                                )
+                                    )
+                                }
+
+                                MainTab.TRASH -> {
+                                    TrashBinScreen(
+                                        viewModel = trashViewModel,
+                                        onNavigateBack = {
+                                            coroutineScope.launch {
+                                                pagerState.animateScrollToPage(MainTab.GALLERY.ordinal)
+                                            }
+                                        },
+                                        onRestoreMedia = { uris ->
+                                            val request = trashViewModel.createRestoreRequest(uris)
+                                            if (request != null) {
+                                                onActionSuccessCallback = {
+                                                    coroutineScope.launch {
+                                                        snackbarHostState.showSnackbar("${uris.size} media berhasil dipulihkan ke Galeri")
+                                                    }
+                                                }
+                                                intentSenderLauncher.launch(request)
+                                            }
+                                        },
+                                        onPermanentDeleteMedia = { uris ->
+                                            val request = trashViewModel.createEmptyTrashRequest(uris)
+                                            if (request != null) {
+                                                onActionSuccessCallback = {
+                                                    coroutineScope.launch {
+                                                        snackbarHostState.showSnackbar("${uris.size} media dihapus permanen")
+                                                    }
+                                                }
+                                                intentSenderLauncher.launch(request)
+                                            }
+                                        },
+                                        onOpenRetentionSettings = {
+                                            currentScreen = Screen.SETTINGS
+                                        }
+                                    )
+                                }
                             }
                         }
 
                         // Floating Bottom Bar mengambang di atas konten tab
                         FloatingBottomBar(
-                            currentTab = currentTab,
+                            currentTab = MainTab.entries[pagerState.currentPage],
                             onTabSelected = { tab ->
-                                if (tab == MainTab.FOLDERS && currentTab == MainTab.FOLDERS) {
+                                if (tab == MainTab.FOLDERS && pagerState.currentPage == MainTab.FOLDERS.ordinal) {
                                     folderViewModel.selectAlbum(null)
                                 }
-                                currentTab = tab
-                                if (tab == MainTab.FOLDERS) {
-                                    folderViewModel.loadFolders()
-                                } else if (tab == MainTab.TRASH) {
-                                    trashViewModel.loadTrashedMedia()
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(tab.ordinal)
                                 }
                             },
                             trashedCount = trashState.trashedMedia.size,

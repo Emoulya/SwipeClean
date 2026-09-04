@@ -1,6 +1,10 @@
 package com.example.cleanswipe.ui.screens.folder
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -275,11 +279,20 @@ fun AlbumDetailScreen(
                                     style = if (isCompact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(
-                                        top = if (isCompact) 14.dp else 12.dp,
-                                        bottom = 6.dp,
-                                        start = 4.dp
-                                    )
+                                    modifier = Modifier
+                                        .animateItem(
+                                            fadeInSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                            fadeOutSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                            placementSpec = spring(
+                                                stiffness = Spring.StiffnessMediumLow,
+                                                dampingRatio = Spring.DampingRatioLowBouncy
+                                            )
+                                        )
+                                        .padding(
+                                            top = if (isCompact) 14.dp else 12.dp,
+                                            bottom = 6.dp,
+                                            start = 4.dp
+                                        )
                                 )
                             }
 
@@ -287,6 +300,14 @@ fun AlbumDetailScreen(
                                 MediaGridItem(
                                     item = item,
                                     isCompact = isCompact,
+                                    modifier = Modifier.animateItem(
+                                        fadeInSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                        fadeOutSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                        placementSpec = spring(
+                                            stiffness = Spring.StiffnessMediumLow,
+                                            dampingRatio = Spring.DampingRatioLowBouncy
+                                        )
+                                    ),
                                     onClick = {
                                         val itemIndex = album.mediaItems.indexOfFirst { it.id == item.id }
                                         onStartSwipeReview(if (itemIndex >= 0) itemIndex else 0)
