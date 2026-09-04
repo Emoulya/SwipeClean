@@ -81,22 +81,26 @@ fun SwipeCardDeck(
     val offsetX = remember { Animatable(0f) }
     val offsetY = remember { Animatable(0f) }
     var hasTriggeredHaptic by remember { mutableStateOf(false) }
+    var isAnimatingOut by remember { mutableStateOf(false) }
 
     // Reset posisi animasi saat item kartu berubah
     LaunchedEffect(currentMedia?.id) {
         offsetX.snapTo(0f)
         offsetY.snapTo(0f)
+        isAnimatingOut = false
         hasTriggeredHaptic = false
     }
 
     // Tangani swipe programatik (misalnya dari tombol bawah)
     LaunchedEffect(programmaticSwipeTrigger) {
         programmaticSwipeTrigger?.let { direction ->
+            if (isAnimatingOut) return@let
+            isAnimatingOut = true
             val targetX = if (direction == SwipeDirection.RIGHT) screenWidthPx * 1.5f else -screenWidthPx * 1.5f
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             offsetX.animateTo(
                 targetValue = targetX,
-                animationSpec = tween(durationMillis = 260)
+                animationSpec = tween(durationMillis = 170)
             )
             onSwiped(direction)
             onProgrammaticSwipeHandled()
@@ -153,15 +157,17 @@ fun SwipeCardDeck(
                         val velocityTracker = VelocityTracker()
                         detectDragGestures(
                             onDragStart = {
+                                if (isAnimatingOut) return@detectDragGestures
                                 hasTriggeredHaptic = false
                                 velocityTracker.resetTracking()
                             },
                             onDrag = { change, dragAmount ->
+                                if (isAnimatingOut) return@detectDragGestures
                                 change.consume()
                                 velocityTracker.addPosition(change.uptimeMillis, change.position)
                                 coroutineScope.launch {
                                     offsetX.snapTo(offsetX.value + dragAmount.x)
-                                    offsetY.snapTo(offsetY.value + dragAmount.y * 0.4f)
+                                    offsetY.snapTo(offsetY.value + dragAmount.y * 0.35f)
 
                                     if (!hasTriggeredHaptic && abs(offsetX.value) >= thresholdPx) {
                                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -172,23 +178,30 @@ fun SwipeCardDeck(
                                 }
                             },
                             onDragEnd = {
+                                if (isAnimatingOut) return@detectDragGestures
+                                val currentX = offsetX.value
                                 val velocityX = velocityTracker.calculateVelocity().x
-                                val isFlingRight = velocityX > 1000f
-                                val isFlingLeft = velocityX < -1000f
+
+                                // Syarat KETAT: Arah lemparan HARUS searah dengan posisi perpindahan kartu (currentX)
+                                // Kartu di sebelah kiri (currentX < 0) TIDAK BISA terlempar ke kanan, dan sebaliknya
+                                val isSwipeRight = currentX > 0 && (currentX >= thresholdPx || (velocityX > 600f && currentX > 30f))
+                                val isSwipeLeft = currentX < 0 && (currentX <= -thresholdPx || (velocityX < -600f && currentX < -30f))
 
                                 coroutineScope.launch {
-                                    if (offsetX.value > thresholdPx || isFlingRight) {
+                                    if (isSwipeRight) {
+                                        isAnimatingOut = true
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         offsetX.animateTo(
                                             targetValue = screenWidthPx * 1.5f,
-                                            animationSpec = tween(220)
+                                            animationSpec = tween(170)
                                         )
                                         onSwiped(SwipeDirection.RIGHT)
-                                    } else if (offsetX.value < -thresholdPx || isFlingLeft) {
+                                    } else if (isSwipeLeft) {
+                                        isAnimatingOut = true
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         offsetX.animateTo(
                                             targetValue = -screenWidthPx * 1.5f,
-                                            animationSpec = tween(220)
+                                            animationSpec = tween(170)
                                         )
                                         onSwiped(SwipeDirection.LEFT)
                                     } else {
@@ -215,9 +228,10 @@ fun SwipeCardDeck(
                                 }
                             },
                             onDragCancel = {
+                                if (isAnimatingOut) return@detectDragGestures
                                 coroutineScope.launch {
-                                    offsetX.animateTo(0f)
-                                    offsetY.animateTo(0f)
+                                    offsetX.animateTo(0f, spring())
+                                    offsetY.animateTo(0f, spring())
                                 }
                             }
                         )
