@@ -40,9 +40,11 @@ class TrashBinViewModel(
         loadTrashedMedia()
     }
 
-    fun loadTrashedMedia() {
+    fun loadTrashedMedia(showLoading: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            if (showLoading || _uiState.value.trashedMedia.isEmpty()) {
+                _uiState.update { it.copy(isLoading = true) }
+            }
             try {
                 val list = repository.getTrashedMedia()
                 val totalSize = list.sumOf { it.size }

@@ -33,9 +33,11 @@ class FolderViewModel(
         loadFolders()
     }
 
-    fun loadFolders() {
+    fun loadFolders(showLoading: Boolean = false) {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            if (showLoading || (_uiState.value.pinnedAlbums.isEmpty() && _uiState.value.regularAlbums.isEmpty())) {
+                _uiState.update { it.copy(isLoading = true) }
+            }
             try {
                 val allMedia = repository.getActiveMedia(MediaFilter.ALL)
                 

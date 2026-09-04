@@ -37,6 +37,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -112,13 +114,17 @@ fun CleanSwipeApp() {
         pageCount = { MainTab.entries.size }
     )
 
-    // Muat data saat tab bergeser
-    LaunchedEffect(pagerState.currentPage) {
-        when (MainTab.entries[pagerState.currentPage]) {
-            MainTab.GALLERY -> galleryViewModel.refresh()
-            MainTab.FOLDERS -> folderViewModel.loadFolders()
-            MainTab.TRASH -> trashViewModel.loadTrashedMedia()
-        }
+    // Muat data di background saat tab selesai bergeser (settled) tanpa mengganggu animasi slide
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.settledPage }
+            .distinctUntilChanged()
+            .collect { page ->
+                when (MainTab.entries[page]) {
+                    MainTab.GALLERY -> galleryViewModel.refresh()
+                    MainTab.FOLDERS -> folderViewModel.loadFolders(showLoading = false)
+                    MainTab.TRASH -> trashViewModel.loadTrashedMedia(showLoading = false)
+                }
+            }
     }
 
     // Action Callback saat Scoped Storage dialog selesai
@@ -238,6 +244,7 @@ fun CleanSwipeApp() {
                         // HorizontalPager untuk perpindahan antar tab via gestur slide / geser
                         HorizontalPager(
                             state = pagerState,
+                            beyondViewportPageCount = 1,
                             userScrollEnabled = folderState.selectedAlbum == null,
                             modifier = Modifier.fillMaxSize()
                         ) { page ->

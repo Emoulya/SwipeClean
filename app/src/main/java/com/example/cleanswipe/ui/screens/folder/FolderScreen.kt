@@ -112,7 +112,7 @@ fun FolderScreen(
                     .fillMaxSize()
                     .background(Color(0xFF0D0D0E))
             ) {
-                if (state.isLoading) {
+                if (state.isLoading && state.pinnedAlbums.isEmpty() && state.regularAlbums.isEmpty()) {
                     CircularProgressIndicator(
                         modifier = Modifier.align(Alignment.Center)
                     )

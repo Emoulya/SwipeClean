@@ -207,7 +207,7 @@ fun TrashBinScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            if (state.isLoading) {
+            if (state.isLoading && state.trashedMedia.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
