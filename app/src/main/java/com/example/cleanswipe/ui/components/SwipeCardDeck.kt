@@ -75,7 +75,8 @@ fun SwipeCardDeck(
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val screenWidthPx = with(density) { configuration.screenWidthDp.dp.toPx() }
-    val thresholdPx = screenWidthPx * 0.28f
+    // Batas threshold ergonomis & ringan (15% lebar layar, bukan 28% yang memberatkan)
+    val thresholdPx = screenWidthPx * 0.15f
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -101,7 +102,7 @@ fun SwipeCardDeck(
             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             offsetX.animateTo(
                 targetValue = targetX,
-                animationSpec = tween(durationMillis = 170)
+                animationSpec = tween(durationMillis = 150)
             )
             onSwiped(direction)
             onProgrammaticSwipeHandled()
@@ -139,7 +140,7 @@ fun SwipeCardDeck(
 
         // Kartu Lapis Pertama (Foreground Swipe Card)
         if (currentMedia != null) {
-            val rotationZ = (offsetX.value / screenWidthPx) * 20f
+            val rotationZ = (offsetX.value / thresholdPx).coerceIn(-2.5f, 2.5f) * 4.5f
 
             Surface(
                 modifier = Modifier
@@ -183,10 +184,11 @@ fun SwipeCardDeck(
                                 val currentX = offsetX.value
                                 val velocityX = velocityTracker.calculateVelocity().x
 
-                                // Syarat KETAT: Arah lemparan HARUS searah dengan posisi perpindahan kartu (currentX)
-                                // Kartu di sebelah kiri (currentX < 0) TIDAK BISA terlempar ke kanan, dan sebaliknya
-                                val isSwipeRight = currentX > 0 && (currentX >= thresholdPx || (velocityX > 600f && currentX > 30f))
-                                val isSwipeLeft = currentX < 0 && (currentX <= -thresholdPx || (velocityX < -600f && currentX < -30f))
+                                // Fling responsif: jentikan ringan (> 280 px/s) ATAU pergeseran melampaui thresholdPx (15% lebar layar)
+                                val flingMinVelocity = 280f
+                                val flingMinDistance = 15f
+                                val isSwipeRight = currentX > 0 && (currentX >= thresholdPx || (velocityX > flingMinVelocity && currentX > flingMinDistance))
+                                val isSwipeLeft = currentX < 0 && (currentX <= -thresholdPx || (velocityX < -flingMinVelocity && currentX < -flingMinDistance))
 
                                 coroutineScope.launch {
                                     if (isSwipeRight) {
@@ -194,7 +196,7 @@ fun SwipeCardDeck(
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         offsetX.animateTo(
                                             targetValue = screenWidthPx * 1.5f,
-                                            animationSpec = tween(170)
+                                            animationSpec = tween(150)
                                         )
                                         onSwiped(SwipeDirection.RIGHT)
                                     } else if (isSwipeLeft) {
@@ -202,17 +204,17 @@ fun SwipeCardDeck(
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         offsetX.animateTo(
                                             targetValue = -screenWidthPx * 1.5f,
-                                            animationSpec = tween(170)
+                                            animationSpec = tween(150)
                                         )
                                         onSwiped(SwipeDirection.LEFT)
                                     } else {
-                                        // Spring kembali ke posisi semula
+                                        // Spring kembali ke posisi semula secara halus
                                         launch {
                                             offsetX.animateTo(
                                                 targetValue = 0f,
                                                 animationSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                    stiffness = Spring.StiffnessMedium
+                                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow
                                                 )
                                             )
                                         }
@@ -220,8 +222,8 @@ fun SwipeCardDeck(
                                             offsetY.animateTo(
                                                 targetValue = 0f,
                                                 animationSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                    stiffness = Spring.StiffnessMedium
+                                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow
                                                 )
                                             )
                                         }
@@ -247,12 +249,15 @@ fun SwipeCardDeck(
                     )
 
                     // Overlay Badge: SIMPAN (Swipe Kanan)
-                    val keepAlpha = (offsetX.value / (thresholdPx * 0.75f)).coerceIn(0f, 1f)
+                    val keepProgress = (offsetX.value / thresholdPx).coerceIn(0f, 1.25f)
+                    val keepAlpha = keepProgress.coerceIn(0f, 1f)
+                    val isKeepTriggered = offsetX.value >= thresholdPx
                     if (keepAlpha > 0.05f) {
                         SwipeStampOverlay(
                             text = "SIMPAN",
                             icon = Icons.Rounded.CheckCircle,
                             color = Color(0xFF10B981),
+                            isConfirmed = isKeepTriggered,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
                                 .padding(24.dp)
@@ -262,12 +267,15 @@ fun SwipeCardDeck(
                     }
 
                     // Overlay Badge: HAPUS (Swipe Kiri)
-                    val trashAlpha = (-offsetX.value / (thresholdPx * 0.75f)).coerceIn(0f, 1f)
+                    val trashProgress = (-offsetX.value / thresholdPx).coerceIn(0f, 1.25f)
+                    val trashAlpha = trashProgress.coerceIn(0f, 1f)
+                    val isTrashTriggered = -offsetX.value >= thresholdPx
                     if (trashAlpha > 0.05f) {
                         SwipeStampOverlay(
                             text = "HAPUS",
                             icon = Icons.Rounded.Delete,
                             color = Color(0xFFEF4444),
+                            isConfirmed = isTrashTriggered,
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(24.dp)
@@ -325,12 +333,18 @@ private fun SwipeStampOverlay(
     text: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     color: Color,
+    isConfirmed: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val scale = if (isConfirmed) 1.08f else 1f
+    val borderWidth = if (isConfirmed) 3.5.dp else 2.5.dp
+    val bgAlpha = if (isConfirmed) 0.35f else 0.18f
+
     Box(
         modifier = modifier
-            .border(width = 3.dp, color = color, shape = RoundedCornerShape(12.dp))
-            .background(color.copy(alpha = 0.2f), shape = RoundedCornerShape(12.dp))
+            .scale(scale)
+            .border(width = borderWidth, color = color, shape = RoundedCornerShape(12.dp))
+            .background(color.copy(alpha = bgAlpha), shape = RoundedCornerShape(12.dp))
             .padding(horizontal = 14.dp, vertical = 6.dp)
     ) {
         Row(
