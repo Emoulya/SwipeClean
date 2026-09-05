@@ -1,4 +1,4 @@
-﻿package com.example.cleanswipe.ui.components
+package com.example.cleanswipe.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -61,7 +61,7 @@ fun FloatingBottomBar(
     ) {
         Surface(
             shape = RoundedCornerShape(32.dp),
-            color = Color(0xFF1E1E22).copy(alpha = 0.96f),
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
             tonalElevation = 8.dp,
             shadowElevation = 12.dp,
             modifier = Modifier.clip(RoundedCornerShape(32.dp))
@@ -75,7 +75,7 @@ fun FloatingBottomBar(
                 MainTab.entries.forEach { tab ->
                     val isSelected = tab == currentTab
                     val contentColor by animateColorAsState(
-                        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else Color.White.copy(alpha = 0.6f),
+                        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                         animationSpec = tween(durationMillis = 180),
                         label = "tabContentColor"
                     )

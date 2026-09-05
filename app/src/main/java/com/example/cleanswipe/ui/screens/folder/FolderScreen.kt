@@ -110,7 +110,7 @@ fun FolderScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF0D0D0E))
+                    .background(MaterialTheme.colorScheme.background)
             ) {
                 if (state.isLoading && state.pinnedAlbums.isEmpty() && state.regularAlbums.isEmpty()) {
                     CircularProgressIndicator(
@@ -133,7 +133,7 @@ fun FolderScreen(
                         item(span = { GridItemSpan(3) }) {
                             Text(
                                 text = "Pinned",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
@@ -188,7 +188,7 @@ fun FolderScreen(
                         item(span = { GridItemSpan(3) }) {
                             Text(
                                 text = "Albums",
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onBackground,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.padding(top = 20.dp, bottom = 4.dp)
@@ -219,7 +219,7 @@ private fun PinnedAlbumCard(
 
     Surface(
         shape = RoundedCornerShape(20.dp),
-        color = Color(0xFF1C1C1E),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
         modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
@@ -235,7 +235,7 @@ private fun PinnedAlbumCard(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF2C2C2E)),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
                 contentAlignment = Alignment.Center
             ) {
                 if (album.coverUri != null) {
@@ -253,7 +253,7 @@ private fun PinnedAlbumCard(
                     Icon(
                         imageVector = Icons.Rounded.Folder,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.5f),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -264,7 +264,7 @@ private fun PinnedAlbumCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = album.name,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     style = MaterialTheme.typography.titleSmall,
                     fontSize = 13.5.sp,
                     fontWeight = FontWeight.Bold,
@@ -274,7 +274,7 @@ private fun PinnedAlbumCard(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = "${album.itemCount} file",
-                    color = Color.White.copy(alpha = 0.55f),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 11.sp
                 )
@@ -302,7 +302,7 @@ private fun AlbumGridItem(
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color(0xFF1C1C1E)),
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
             if (album.coverUri != null) {
@@ -320,7 +320,7 @@ private fun AlbumGridItem(
                 Icon(
                     imageVector = Icons.Rounded.Folder,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.4f),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                     modifier = Modifier.size(36.dp)
                 )
             }
@@ -331,7 +331,7 @@ private fun AlbumGridItem(
         // Nama Folder
         Text(
             text = album.name,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onSurface,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
@@ -341,7 +341,7 @@ private fun AlbumGridItem(
         // Jumlah File
         Text(
             text = "${album.itemCount}",
-            color = Color.White.copy(alpha = 0.5f),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall
         )
     }

@@ -4,6 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.example.cleanswipe.data.preferences.SettingsManager
 import com.example.cleanswipe.ui.CleanSwipeApp
 import com.example.cleanswipe.ui.theme.CleanSwipeTheme
 
@@ -11,8 +14,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        val settingsManager = SettingsManager.getInstance(applicationContext)
         setContent {
-            CleanSwipeTheme {
+            val settings by settingsManager.settings.collectAsState()
+            CleanSwipeTheme(themeMode = settings.themeMode) {
                 CleanSwipeApp()
             }
         }
