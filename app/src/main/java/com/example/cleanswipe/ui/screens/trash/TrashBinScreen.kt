@@ -13,9 +13,12 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -127,7 +130,8 @@ fun TrashBinScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 84.dp)
+                            .navigationBarsPadding()
+                            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 92.dp)
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -158,8 +162,9 @@ fun TrashBinScreen(
                                 onClick = { onRestoreMedia(targetUris) },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(48.dp),
-                                shape = RoundedCornerShape(12.dp)
+                                    .height(46.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Rounded.Restore,
@@ -169,7 +174,10 @@ fun TrashBinScreen(
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Pulihkan",
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 13.5.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
 
@@ -178,8 +186,9 @@ fun TrashBinScreen(
                                 onClick = { onPermanentDeleteMedia(targetUris) },
                                 modifier = Modifier
                                     .weight(1f)
-                                    .height(48.dp),
+                                    .height(46.dp),
                                 shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.error
                                 )
@@ -189,10 +198,14 @@ fun TrashBinScreen(
                                     contentDescription = null,
                                     modifier = Modifier.size(18.dp)
                                 )
-                                Spacer(modifier = Modifier.width(6.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text(
                                     text = "Hapus Permanen",
-                                    fontWeight = FontWeight.SemiBold
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.5.sp,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
                         }

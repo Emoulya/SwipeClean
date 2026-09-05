@@ -7,12 +7,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -161,7 +166,8 @@ fun SwipeReviewScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .navigationBarsPadding()
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 // Tombol Eksekusi Batch Sampah (muncul jika ada antrean sampah)
@@ -173,23 +179,33 @@ fun SwipeReviewScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp),
+                            .heightIn(min = 48.dp),
                         shape = RoundedCornerShape(14.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.error
                         )
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Delete,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Pindahkan ke Sampah (${state.pendingTrashList.size} foto • ${Formatters.formatFileSize(state.pendingTrashSizeBytes)})",
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Delete,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Pindahkan ke Sampah (${state.pendingTrashList.size} foto • ${Formatters.formatFileSize(state.pendingTrashSizeBytes)})",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(10.dp))
                 }
