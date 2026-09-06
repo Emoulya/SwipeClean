@@ -1,9 +1,5 @@
 package com.example.cleanswipe.ui.screens.gallery
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -235,15 +231,31 @@ fun GalleryScreen(
 
                                     do {
                                         val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                                        val activePointers = event.changes.filter { it.pressed }
+                                        val changes = event.changes
+                                        var pressedCount = 0
+                                        var firstPressedIdx = -1
+                                        var secondPressedIdx = -1
 
-                                        if (activePointers.size >= 2) {
+                                        for (i in 0 until changes.size) {
+                                            if (changes[i].pressed) {
+                                                pressedCount++
+                                                if (firstPressedIdx == -1) {
+                                                    firstPressedIdx = i
+                                                } else if (secondPressedIdx == -1) {
+                                                    secondPressedIdx = i
+                                                }
+                                            }
+                                        }
+
+                                        if (pressedCount >= 2 && firstPressedIdx != -1 && secondPressedIdx != -1) {
                                             // Konsumsi event segera agar LazyVerticalGrid TIDAK melakukan scroll saat ada 2 jari!
-                                            event.changes.forEach { it.consume() }
+                                            for (i in 0 until changes.size) {
+                                                changes[i].consume()
+                                            }
 
                                             if (!hasSwitched) {
-                                                val p1 = activePointers[0].position
-                                                val p2 = activePointers[1].position
+                                                val p1 = changes[firstPressedIdx].position
+                                                val p2 = changes[secondPressedIdx].position
                                                 val currentSpan = hypot(p1.x - p2.x, p1.y - p2.y)
 
                                                 if (initialSpan == null) {
@@ -268,7 +280,7 @@ fun GalleryScreen(
                                             }
                                         } else {
                                             initialSpan = null
-                                            if (activePointers.isEmpty()) {
+                                            if (pressedCount == 0) {
                                                 hasSwitched = false
                                             }
                                         }
@@ -279,42 +291,30 @@ fun GalleryScreen(
                         state.currentGroupedMedia.forEach { (dateHeader, itemsInGroup) ->
                             item(
                                 key = "header_${state.gridMode}_$dateHeader",
-                                span = { GridItemSpan(columnCount) }
+                                span = { GridItemSpan(columnCount) },
+                                contentType = "header"
                             ) {
                                 Text(
                                     text = dateHeader,
                                     style = if (isCompact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .animateItem(
-                                            fadeInSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
-                                            fadeOutSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-                                            placementSpec = spring(
-                                                stiffness = Spring.StiffnessMediumLow,
-                                                dampingRatio = Spring.DampingRatioLowBouncy
-                                            )
-                                        )
-                                        .padding(
-                                            top = if (isCompact) 14.dp else 12.dp,
-                                            bottom = 6.dp,
-                                            start = 4.dp
-                                        )
+                                    modifier = Modifier.padding(
+                                        top = if (isCompact) 14.dp else 12.dp,
+                                        bottom = 6.dp,
+                                        start = 4.dp
+                                    )
                                 )
                             }
 
-                            items(itemsInGroup, key = { it.id }) { item ->
+                            items(
+                                items = itemsInGroup,
+                                key = { it.id },
+                                contentType = { if (it.isVideo) "video_item" else "image_item" }
+                            ) { item ->
                                 MediaGridItem(
                                     item = item,
                                     isCompact = isCompact,
-                                    modifier = Modifier.animateItem(
-                                        fadeInSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
-                                        fadeOutSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-                                        placementSpec = spring(
-                                            stiffness = Spring.StiffnessMediumLow,
-                                            dampingRatio = Spring.DampingRatioLowBouncy
-                                        )
-                                    ),
                                     onClick = {
                                         val itemIndex = state.allMedia.indexOfFirst { it.id == item.id }
                                         onStartSwipeReview(if (itemIndex >= 0) itemIndex else 0)

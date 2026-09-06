@@ -1,10 +1,6 @@
 package com.example.cleanswipe.ui.screens.folder
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -213,7 +209,7 @@ fun AlbumDetailScreen(
                         contentPadding = PaddingValues(
                             start = if (isCompact) 6.dp else 10.dp,
                             end = if (isCompact) 6.dp else 10.dp,
-                            bottom = 110.dp // Ruang ekstra agar tidak tertutup floating bottom bar
+                            bottom = 110.dp
                         ),
                         horizontalArrangement = Arrangement.spacedBy(if (isCompact) 3.dp else 5.dp),
                         verticalArrangement = Arrangement.spacedBy(if (isCompact) 3.dp else 5.dp),
@@ -228,15 +224,30 @@ fun AlbumDetailScreen(
 
                                     do {
                                         val event = awaitPointerEvent(pass = PointerEventPass.Initial)
-                                        val activePointers = event.changes.filter { it.pressed }
+                                        val changes = event.changes
+                                        var pressedCount = 0
+                                        var firstPressedIdx = -1
+                                        var secondPressedIdx = -1
 
-                                        if (activePointers.size >= 2) {
-                                            // Konsumsi event agar tidak bentrok dengan scroll grid saat 2 jari
-                                            event.changes.forEach { it.consume() }
+                                        for (i in 0 until changes.size) {
+                                            if (changes[i].pressed) {
+                                                pressedCount++
+                                                if (firstPressedIdx == -1) {
+                                                    firstPressedIdx = i
+                                                } else if (secondPressedIdx == -1) {
+                                                    secondPressedIdx = i
+                                                }
+                                            }
+                                        }
+
+                                        if (pressedCount >= 2 && firstPressedIdx != -1 && secondPressedIdx != -1) {
+                                            for (i in 0 until changes.size) {
+                                                changes[i].consume()
+                                            }
 
                                             if (!hasSwitched) {
-                                                val p1 = activePointers[0].position
-                                                val p2 = activePointers[1].position
+                                                val p1 = changes[firstPressedIdx].position
+                                                val p2 = changes[secondPressedIdx].position
                                                 val currentSpan = hypot(p1.x - p2.x, p1.y - p2.y)
 
                                                 if (initialSpan == null) {
@@ -245,23 +256,21 @@ fun AlbumDetailScreen(
                                                     val deltaSpan = currentSpan - initialSpan
                                                     val mode = currentGridMode
 
-                                                    // Spread (merenggang / zoom in): Beralih ke 4 Kolom (Harian)
                                                     if (deltaSpan > thresholdPx && mode == GalleryGridMode.MONTHLY) {
-                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                         currentOnSetGridMode(GalleryGridMode.DAILY)
-                                                         hasSwitched = true
-                                                     }
-                                                     // Pinch (mencubit / zoom out): Beralih ke 6 Kolom (Bulanan)
-                                                     else if (deltaSpan < -thresholdPx && mode == GalleryGridMode.DAILY) {
-                                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                                         currentOnSetGridMode(GalleryGridMode.MONTHLY)
-                                                         hasSwitched = true
-                                                     }
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        currentOnSetGridMode(GalleryGridMode.DAILY)
+                                                        hasSwitched = true
+                                                    }
+                                                    else if (deltaSpan < -thresholdPx && mode == GalleryGridMode.DAILY) {
+                                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                        currentOnSetGridMode(GalleryGridMode.MONTHLY)
+                                                        hasSwitched = true
+                                                    }
                                                 }
                                             }
                                         } else {
                                             initialSpan = null
-                                            if (activePointers.isEmpty()) {
+                                            if (pressedCount == 0) {
                                                 hasSwitched = false
                                             }
                                         }
@@ -272,42 +281,30 @@ fun AlbumDetailScreen(
                         currentGrouped.forEach { (dateHeader, itemsInGroup) ->
                             item(
                                 key = "album_header_${gridMode}_$dateHeader",
-                                span = { GridItemSpan(columnCount) }
+                                span = { GridItemSpan(columnCount) },
+                                contentType = "header"
                             ) {
                                 Text(
                                     text = dateHeader,
                                     style = if (isCompact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .animateItem(
-                                            fadeInSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
-                                            fadeOutSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-                                            placementSpec = spring(
-                                                stiffness = Spring.StiffnessMediumLow,
-                                                dampingRatio = Spring.DampingRatioLowBouncy
-                                            )
-                                        )
-                                        .padding(
-                                            top = if (isCompact) 14.dp else 12.dp,
-                                            bottom = 6.dp,
-                                            start = 4.dp
-                                        )
+                                    modifier = Modifier.padding(
+                                        top = if (isCompact) 14.dp else 12.dp,
+                                        bottom = 6.dp,
+                                        start = 4.dp
+                                    )
                                 )
                             }
 
-                            items(itemsInGroup, key = { it.id }) { item ->
+                            items(
+                                items = itemsInGroup,
+                                key = { it.id },
+                                contentType = { if (it.isVideo) "video_item" else "image_item" }
+                            ) { item ->
                                 MediaGridItem(
                                     item = item,
                                     isCompact = isCompact,
-                                    modifier = Modifier.animateItem(
-                                        fadeInSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
-                                        fadeOutSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-                                        placementSpec = spring(
-                                            stiffness = Spring.StiffnessMediumLow,
-                                            dampingRatio = Spring.DampingRatioLowBouncy
-                                        )
-                                    ),
                                     onClick = {
                                         val itemIndex = album.mediaItems.indexOfFirst { it.id == item.id }
                                         onStartSwipeReview(if (itemIndex >= 0) itemIndex else 0)
@@ -318,7 +315,6 @@ fun AlbumDetailScreen(
                     }
                 }
             } else {
-                // Empty state jika album tidak memiliki media
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
