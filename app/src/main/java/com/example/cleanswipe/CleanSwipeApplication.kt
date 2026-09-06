@@ -7,7 +7,16 @@ import coil.decode.VideoFrameDecoder
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 
+import com.example.cleanswipe.data.preferences.SettingsManager
+import com.example.cleanswipe.util.ThemeHelper
+
 class CleanSwipeApplication : Application(), ImageLoaderFactory {
+
+    override fun onCreate() {
+        super.onCreate()
+        val settings = SettingsManager.getInstance(this).settings.value
+        ThemeHelper.applySystemNightMode(this, settings.themeMode)
+    }
 
     override fun newImageLoader(): ImageLoader {
         return ImageLoader.Builder(this)

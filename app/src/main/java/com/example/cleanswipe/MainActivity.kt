@@ -13,10 +13,11 @@ import com.example.cleanswipe.ui.theme.CleanSwipeTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        val settingsManager = SettingsManager.getInstance(applicationContext)
+        com.example.cleanswipe.util.ThemeHelper.applySystemNightMode(this, settingsManager.settings.value.themeMode)
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val settingsManager = SettingsManager.getInstance(applicationContext)
         setContent {
             val settings by settingsManager.settings.collectAsState()
             CleanSwipeTheme(themeMode = settings.themeMode) {

@@ -6,7 +6,7 @@
     <!-- Splash Screen Theme (AndroidX SplashScreen API) -->
     <style name="Theme.App.Starting" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/splash_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo_light</item>
         <item name="postSplashScreenTheme">@style/Theme.CleanSwipe</item>
     </style>
 </resources>

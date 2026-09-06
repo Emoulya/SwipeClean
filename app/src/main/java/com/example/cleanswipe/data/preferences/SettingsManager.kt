@@ -22,7 +22,8 @@ data class UserSettings(
 
 class SettingsManager(context: Context) {
 
-    private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    private val appContext: Context = context.applicationContext
+    private val prefs: SharedPreferences = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     private val _settings = MutableStateFlow(loadSettings())
     val settings: StateFlow<UserSettings> = _settings.asStateFlow()
@@ -34,6 +35,7 @@ class SettingsManager(context: Context) {
         } catch (e: Exception) {
             AppThemeMode.SYSTEM
         }
+        com.example.cleanswipe.util.ThemeHelper.applySystemNightMode(appContext, themeMode)
         return UserSettings(
             isAutoPlayEnabled = prefs.getBoolean(KEY_AUTO_PLAY, true),
             isAutoMuteEnabled = prefs.getBoolean(KEY_AUTO_MUTE, true),
@@ -60,6 +62,7 @@ class SettingsManager(context: Context) {
     fun setThemeMode(mode: AppThemeMode) {
         prefs.edit().putString(KEY_THEME_MODE, mode.name).apply()
         _settings.update { it.copy(themeMode = mode) }
+        com.example.cleanswipe.util.ThemeHelper.applySystemNightMode(appContext, mode)
     }
 
     companion object {
