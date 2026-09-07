@@ -54,6 +54,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.request.videoFrameMillis
 import com.example.cleanswipe.data.model.MediaItem
+import com.example.cleanswipe.util.MediaStoreThumbnailFetcher
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -313,6 +314,8 @@ private fun MediaCardContent(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(media.uri)
+                    .setParameter(MediaStoreThumbnailFetcher.PARAM_FULL_RESOLUTION, true)
+                    .allowRgb565(false)
                     .apply {
                         if (media.isVideo) {
                             videoFrameMillis(500)

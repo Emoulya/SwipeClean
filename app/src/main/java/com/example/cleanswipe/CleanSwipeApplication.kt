@@ -37,7 +37,6 @@ class CleanSwipeApplication : Application(), ImageLoaderFactory {
                     .build()
             }
             .crossfade(false)
-            .allowRgb565(true)
             .build()
     }
 }

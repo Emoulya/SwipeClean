@@ -45,6 +45,7 @@ fun MediaGridItem(
         ImageRequest.Builder(context)
             .data(item.uri)
             .size(256, 256)
+            .allowRgb565(true)
             .apply {
                 if (item.isVideo) {
                     videoFrameMillis(500)

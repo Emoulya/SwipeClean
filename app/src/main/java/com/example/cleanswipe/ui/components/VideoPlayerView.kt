@@ -1,9 +1,11 @@
 package com.example.cleanswipe.ui.components
 
 import android.net.Uri
+import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
+import com.example.cleanswipe.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -112,9 +114,9 @@ fun VideoPlayerView(
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
             factory = { ctx ->
-                PlayerView(ctx).apply {
+                val playerView = LayoutInflater.from(ctx).inflate(R.layout.view_video_player, null) as PlayerView
+                playerView.apply {
                     player = exoPlayer
-                    useController = false
                     layoutParams = FrameLayout.LayoutParams(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                         ViewGroup.LayoutParams.MATCH_PARENT
